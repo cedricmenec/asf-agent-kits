@@ -1,6 +1,6 @@
 # ASF Agent Kits
 
-**Status: R0 design scaffold, plus stacked R1 contract-validation proposal. NOT a released agent kit.**
+**Status: R0 design scaffold + stacked R1 contracts + R2a read-only planner prototype. NOT a released agent kit.**
 
 This repository is intended to publish independently versioned, portable, manually-triggered agent kits for GitHub repositories. Initially it specifies:
 
@@ -17,6 +17,7 @@ The shared core, release manifests, installer, drift detector, upgrade/rollback 
 - `tools/validate_contracts.py`: **formal Draft 2020-12** JSON Schema verification with independent semantic checks.
 - `tools/check-contracts.mjs`: supplemental R0 smoke checks; **not** the authority for schema conformance.
 - `tests/fixtures/`: positive and negative JSON fixtures for all three contract types.
+- `tools/plan_install.py`: R2a **read-only**, deterministic `status` and `plan` using synthetic candidate manifests; see `docs/r2a-planner.md`. It cannot install a kit or attest a GitHub release.
 - `tests/`: zero-cost tests for integrity of the R0 scaffolding.
 - `examples/`: synthetic, non-installed examples; placeholder identifiers are not real releases.
 - `docs/`: ADR, release policy, security boundaries, and development roadmap.
