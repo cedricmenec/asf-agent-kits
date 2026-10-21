@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "id": "example-project",
+    "repository": "example-owner/example-project",
+    "baseBranch": "trunk"
+  },
+  "kits": {
+    "opencode-openspec": {
+      "enabled": true
+    },
+    "opencode-direct": {
+      "enabled": false
+    }
+  },
+  "tasks": {
+    "source": "files",
+    "root": "backlog/tasks",
+    "idPattern": "^[A-Z][A-Z0-9]{1,9}-[0-9]{1,6}$",
+    "filename": "{taskId}.md",
+    "allowNumericAlias": false
+  },
+  "execution": {
+    "trigger": "manual",
+    "runner": "ubuntu-latest",
+    "paidConcurrencyGroup": "example-agentkit-paid",
+    "modelProvider": "openrouter",
+    "allowedModels": [
+      "openrouter/example/model-id-not-approved"
+    ],
+    "defaultModel": "openrouter/example/model-id-not-approved",
+    "openCodeVersion": "1.0.0",
+    "openSpecVersion": "1.14.1"
+  },
+  "validation": {
+    "projectCommands": [
+      "npm run check"
+    ],
+    "requiredCheckContexts": [
+      "check"
+    ],
+    "requireIndependentCi": true
+  },
+  "paths": {
+    "protected": [
+      ".github/",
+      ".asf/",
+      "AGENTS.md"
+    ],
+    "additionalProtected": [],
+    "allowedProductPrefixes": [
+      "src/"
+    ]
+  },
+  "publication": {
+    "createPullRequest": true,
+    "draftPlanPr": true,
+    "autoMerge": false,
+    "targetBranch": "trunk",
+    "requireHeadShaMatch": true
+  }
+}

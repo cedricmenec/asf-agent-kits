@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "kits": [
+    {
+      "id": "opencode-openspec",
+      "version": "1.0.0",
+      "sourceRepository": "example-owner/agent-kits",
+      "releaseTag": "kits/opencode-openspec/v1.0.0",
+      "sourceCommitSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coreVersion": "1.0.0",
+      "configSchemaVersion": 1,
+      "managedFiles": {
+        "docs/agentkit.md": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "id": "opencode-openspec",
+      "version": "1.0.0",
+      "sourceRepository": "example-owner/agent-kits",
+      "releaseTag": "kits/opencode-openspec/v1.0.0",
+      "sourceCommitSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coreVersion": "1.0.0",
+      "configSchemaVersion": 1,
+      "managedFiles": {
+        "docs/agentkit.md": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  ]
+}

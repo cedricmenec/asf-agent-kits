@@ -23,3 +23,7 @@ Date: 2026-10-21. Initial execution context: local ChatGPT container, Node.js v2
 ## Next step
 
 Publish the R0 files through a feature branch and draft PR, run new GitHub CI and verify the exact SHA. Separate authorization is required for rulesets/secrets/app changes.
+
+## R1 follow-up (separate, stacked PR)
+
+R1 moves authoritative schema validation to Python's standards-compliant `jsonschema` Draft 2020-12 implementation and leaves the original Node mini-checker as a supplemental smoke test only. The CI now adds an actionlint check pinned to upstream Git SHA and tests all fixtures. The R0 evidence above remains historical evidence for the original PR #1 SHA, not a statement about the R1 SHA.
