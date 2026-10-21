@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:asf:agentkit:config:1",
+  "title": "ASF AgentKit target repository configuration (provisional R0)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "project", "kits", "tasks", "execution", "validation", "paths", "publication"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "project": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "repository", "baseBranch"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$" },
+        "repository": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+        "baseBranch": { "type": "string", "minLength": 1, "maxLength": 160 }
+      }
+    },
+    "kits": {
+      "type": "object", "additionalProperties": false,
+      "required": ["opencode-openspec", "opencode-direct"],
+      "properties": {
+        "opencode-openspec": { "$ref": "#/$defs/kitSwitch" },
+        "opencode-direct": { "$ref": "#/$defs/kitSwitch" }
+      }
+    },
+    "tasks": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source", "root", "idPattern", "filename", "allowNumericAlias"],
+      "properties": {
+        "source": { "const": "files" },
+        "root": { "$ref": "#/$defs/relativeDirectory" },
+        "idPattern": { "type": "string", "minLength": 4, "maxLength": 160 },
+        "filename": { "const": "{taskId}.md" },
+        "allowNumericAlias": { "type": "boolean" }
+      }
+    },
+    "execution": {
+      "type": "object", "additionalProperties": false,
+      "required": ["trigger", "runner", "paidConcurrencyGroup", "modelProvider", "allowedModels", "defaultModel", "openCodeVersion", "openSpecVersion"],
+      "properties": {
+        "trigger": { "const": "manual" },
+        "runner": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "paidConcurrencyGroup": { "type": "string", "pattern": "^[a-zA-Z0-9_-]{3,100}$" },
+        "modelProvider": { "const": "openrouter" },
+        "allowedModels": { "type": "array", "minItems": 1, "maxItems": 20, "uniqueItems": true, "items": { "type": "string", "minLength": 3, "maxLength": 160 } },
+        "defaultModel": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "openCodeVersion": { "$ref": "#/$defs/exactVersion" },
+        "openSpecVersion": { "$ref": "#/$defs/exactVersion" }
+      }
+    },
+    "validation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["projectCommands", "requiredCheckContexts", "requireIndependentCi"],
+      "properties": {
+        "projectCommands": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "type": "string", "minLength": 2, "maxLength": 500 } },
+        "requiredCheckContexts": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "type": "string", "minLength": 1 } },
+        "requireIndependentCi": { "const": true }
+      }
+    },
+    "paths": {
+      "type": "object", "additionalProperties": false,
+      "required": ["protected", "additionalProtected", "allowedProductPrefixes"],
+      "properties": {
+        "protected": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/relativePath" } },
+        "additionalProtected": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/relativePath" } },
+        "allowedProductPrefixes": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/relativeDirectory" } }
+      }
+    },
+    "publication": {
+      "type": "object", "additionalProperties": false,
+      "required": ["createPullRequest", "draftPlanPr", "autoMerge", "targetBranch", "requireHeadShaMatch"],
+      "properties": {
+        "createPullRequest": { "const": true },
+        "draftPlanPr": { "const": true },
+        "autoMerge": { "type": "boolean" },
+        "targetBranch": { "type": "string", "minLength": 1 },
+        "requireHeadShaMatch": { "const": true }
+      }
+    }
+  },
+  "$defs": {
+    "kitSwitch": { "type": "object", "additionalProperties": false, "required": ["enabled"], "properties": { "enabled": { "type": "boolean" } } },
+    "exactVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$" },
+    "relativePath": { "type": "string", "minLength": 1, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$" },
+    "relativeDirectory": { "type": "string", "minLength": 1, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$" }
+  }
+}

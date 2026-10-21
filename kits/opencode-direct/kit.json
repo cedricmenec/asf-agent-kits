@@ -1,0 +1,8 @@
+{
+  "id": "opencode-direct",
+  "status": "design-only",
+  "defaultEnabled": false,
+  "manualPhases": ["run"],
+  "requiresControllerV3": false,
+  "release": null
+}
