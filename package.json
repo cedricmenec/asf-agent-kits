@@ -1,0 +1,12 @@
+{
+  "name": "@asf/agent-kits-catalogue",
+  "version": "0.0.0-private-r0",
+  "private": true,
+  "type": "module",
+  "description": "Development-only R0 scaffold for the ASF Agent Kits catalogue; not an installable release",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "check": "node tools/check-contracts.mjs && node --test",
+    "test": "node --test"
+  }
+}

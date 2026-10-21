@@ -1,0 +1,8 @@
+{
+  "id": "opencode-openspec",
+  "status": "design-only",
+  "defaultEnabled": true,
+  "manualPhases": ["plan", "apply", "auto", "finalize"],
+  "requiresControllerV3": false,
+  "release": null
+}
