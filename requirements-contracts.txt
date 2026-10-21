@@ -5,3 +5,6 @@ jsonschema-specifications==2025.9.1
 referencing==0.37.0
 rpds-py==2026.5.1
 typing_extensions==4.16.0
+
+# Strict YAML config parsing for R2b read-only preview.
+PyYAML==6.0.3
