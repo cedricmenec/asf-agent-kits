@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "kitId": "opencode-openspec",
+  "kitVersion": "1.0.0",
+  "coreVersion": "1.0.0",
+  "sourceRepository": "example-owner/agent-kits",
+  "sourceCommitSha": "not-a-sha",
+  "releaseTag": "kits/opencode-openspec/v1.0.0",
+  "runtime": {
+    "nodeVersion": "22.16.0",
+    "openCodeVersion": "1.0.0",
+    "openSpecVersion": "1.14.1"
+  },
+  "artifacts": [
+    {
+      "path": "docs/agentkit.md",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  ]
+}

@@ -23,4 +23,4 @@ for (const dir of dirs) {
   const descriptor = JSON.parse(await readFile(path.join(rootDir, 'kits',dir,'kit.json'),'utf8'));
   if (descriptor.id !== dir || descriptor.status !== 'design-only' || descriptor.release !== null || descriptor.requiresControllerV3 !== false) throw new Error(`Kit ${dir}: R0 metadata does not match design-only scope`);
 }
-console.log(`R0 contract checks passed: ${schemaFiles.length} provisional schemas, ${dirs.length} design-only kit descriptors, 1 example (no LLM execution)`);
+console.log(`R0 supplemental smoke checks passed (NOT a full schema validator): ${schemaFiles.length} provisional schemas, ${dirs.length} design-only kit descriptors, 1 example (no LLM execution)`);

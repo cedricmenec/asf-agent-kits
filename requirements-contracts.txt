@@ -1,0 +1,7 @@
+# Pinned 2026-10-21. Dedicated only to non-paying JSON Schema test/validation.
+jsonschema==4.26.0
+attrs==26.1.0
+jsonschema-specifications==2025.9.1
+referencing==0.37.0
+rpds-py==2026.5.1
+typing_extensions==4.16.0

@@ -6,7 +6,7 @@
   "description": "Development-only R0 scaffold for the ASF Agent Kits catalogue; not an installable release",
   "engines": { "node": ">=22" },
   "scripts": {
-    "check": "node tools/check-contracts.mjs && node --test",
+    "check": "python3 -m unittest discover -s tests -p test_*.py && node tools/check-contracts.mjs && node --test",
     "test": "node --test"
   }
 }

@@ -1,6 +1,6 @@
 # ASF Agent Kits
 
-**Status: R0 design scaffold. NOT a released agent kit.**
+**Status: R0 design scaffold, plus stacked R1 contract-validation proposal. NOT a released agent kit.**
 
 This repository is intended to publish independently versioned, portable, manually-triggered agent kits for GitHub repositories. Initially it specifies:
 
@@ -14,12 +14,14 @@ The shared core, release manifests, installer, drift detector, upgrade/rollback 
 - `schemas/`: provisional JSON Schema contracts for target configuration, installation lock, and release manifest.
 - `kits/`: **metadata skeletons only**. These directories are not executable bundles.
 - `core/`: planned shared safeguards, without runtime code yet.
-- `tools/check-contracts.mjs`: preliminary offline contract checks. **Not** a full JSON Schema validator.
+- `tools/validate_contracts.py`: **formal Draft 2020-12** JSON Schema verification with independent semantic checks.
+- `tools/check-contracts.mjs`: supplemental R0 smoke checks; **not** the authority for schema conformance.
+- `tests/fixtures/`: positive and negative JSON fixtures for all three contract types.
 - `tests/`: zero-cost tests for integrity of the R0 scaffolding.
 - `examples/`: synthetic, non-installed examples; placeholder identifiers are not real releases.
 - `docs/`: ADR, release policy, security boundaries, and development roadmap.
 
-Run `npm run check` with Node.js 22 or later. This command does not invoke GitHub Apps, OpenRouter, OpenCode or a paid model.
+Run `npm run check` with Node.js 22+ and Python 3.12+ with the pinned dependencies in `requirements-contracts.txt` installed. The CI installs them and runs `actionlint` on GitHub Actions workflows. This command does not invoke GitHub Apps, OpenRouter, OpenCode or a paid model.
 
 ## Intended future repository-level installation
 

@@ -3,7 +3,7 @@
 This is a dependency plan, **not** proof of completed runtime implementation.
 
 - **R0, scaffold**: project structure, provisional JSON schemas, ADR, kit descriptors and offline tests. This folder is the initial artifact.
-- **R1, contract validation**: formal JSON Schema validator + positive/negative fixtures; reliable full CI, actionlint and provenance policy; no payments.
+- **R1, contract validation**: formal Draft 2020-12 validator + positive/negative fixtures; GitHub CI with pinned actionlint, tested at the exact PR SHA; no payments. (Implemented in stacked draft PR, subject to remote CI.)
 - **R2, pure renderer/status**: audit, render, dry-run, three-way managed-file diff, hash-based drift detection, deterministic/idempotent installation plan.
 - **R3, OpenCode + OpenSpec kit**: port manual phases, OPSX, strict checklist, durable checkpoint guards and safe PR publisher without ASF V3 workflow_call. No LLM/payments in CI; mock provider tests.
 - **R4, optional OpenCode direct**: same policies and protected paths, shared per-repo paid-job concurrency, independent profile installation.
