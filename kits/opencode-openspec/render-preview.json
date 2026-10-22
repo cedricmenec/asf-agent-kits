@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "kitId": "opencode-openspec",
+  "targetRepository": "example/sandbox",
+  "files": [
+    {
+      "template": "agentkit-info.md.tmpl",
+      "path": ".asf/agentkit/opencode-openspec-info.md"
+    }
+  ]
+}
