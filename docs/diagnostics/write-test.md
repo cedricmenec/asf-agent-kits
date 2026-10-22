@@ -1,0 +1,1 @@
+Test de création de commit via le connecteur GitHub — aucune donnée sensible.
