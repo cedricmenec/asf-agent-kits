@@ -1,15 +1,15 @@
 # ASF Agent Kits
 
-**Status: R0 design scaffold + stacked R1 contracts + R2a read-only planner prototype. NOT a released agent kit.**
+**Status: R0/R1/R2a/R2b merged to main; R2c deterministic local candidate builder in a draft PR. NOT an installable or released agent kit.**
 
 This repository is intended to publish independently versioned, portable, manually-triggered agent kits for GitHub repositories. Initially it specifies:
 
 - `opencode-openspec`: the standard OpenCode + OpenSpec profile, with manual `plan`, `apply`, `auto`, and `finalize` phases (not yet implemented in R0).
 - `opencode-direct`: an optional independent OpenCode profile, disabled by default (not yet implemented in R0).
 
-The shared core, release manifests, installer, drift detector, upgrade/rollback CLI, and actual agent workflows are **future milestones**. ASF Backlog Orchestrator V1, ASF Controller V3, waves, global CAS, and automatic paid retries are excluded from this initial distribution.
+The executable shared core, trusted release publication, installer, upgrade/rollback application and agent workflows are **future milestones**. Read-only contract validation, drift planning, three-way preview and local candidate manifest generation are prototypes. ASF Backlog Orchestrator V1, ASF Controller V3, waves, global CAS, and automatic paid retries are excluded from this initial distribution.
 
-## R0 contents
+## Current development contents
 
 - `schemas/`: provisional JSON Schema contracts for target configuration, installation lock, and release manifest.
 - `kits/`: **metadata skeletons only**. These directories are not executable bundles.
@@ -18,7 +18,9 @@ The shared core, release manifests, installer, drift detector, upgrade/rollback 
 - `tools/check-contracts.mjs`: supplemental R0 smoke checks; **not** the authority for schema conformance.
 - `tests/fixtures/`: positive and negative JSON fixtures for all three contract types.
 - `tools/plan_install.py`: R2a **read-only**, deterministic `status` and `plan` using synthetic candidate manifests; see `docs/r2a-planner.md`. It cannot install a kit or attest a GitHub release.
-- `tests/`: zero-cost tests for integrity of the R0 scaffolding.
+- `tools/plan_merge.py`: R2b read-only three-way preview, no apply, source provenance unverified.
+- `tools/build_candidate.py`: R2c read-only canonical JSON release-candidate generator with SHA-256 of local selected artifacts, no remote verification; see `docs/r2c-candidate-builder.md`.
+- `tests/`: non-paid tests for the catalogue prototypes.
 - `examples/`: synthetic, non-installed examples; placeholder identifiers are not real releases.
 - `docs/`: ADR, release policy, security boundaries, and development roadmap.
 
@@ -37,7 +39,7 @@ Merely merging a ruleset JSON file in a PR does **not** apply GitHub Settings.
 
 ## Source of truth
 
-Read `AGENTS.md`, `ChatGPT.md`, `docs/adr/0001-catalogue-distribution.md` and the [ASF AgentKit Notion specification](https://app.notion.com/p/40012ac916368112b7fbc8d25dbb9838). Notion is the design reference during R0; this repository, when implemented, will become the versioned source for shipped artifacts. Confirm GitHub state before making any live claim.
+Read `AGENTS.md`, `ChatGPT.md`, `docs/adr/0001-catalogue-distribution.md` and the [ASF AgentKit Notion specification](https://app.notion.com/p/40012ac916368112b7fbc8d25dbb9838). Notion is the design reference; code on protected `main` is the current source for the non-executable tooling, while actual releases and installed artifacts do not yet exist. Confirm GitHub state before making any live claim.
 
 ## Versioning
 
