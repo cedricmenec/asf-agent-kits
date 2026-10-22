@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "kitId": "opencode-openspec",
+  "kitVersion": "0.0.1",
+  "coreVersion": "0.0.1",
+  "sourceRepository": "example/catalogue",
+  "sourceCommitSha": "0000000000000000000000000000000000000000",
+  "releaseTag": "kits/opencode-openspec/v0.0.1",
+  "runtime": {
+    "nodeVersion": "22.0.0",
+    "openCodeVersion": "1.0.0",
+    "openSpecVersion": "1.0.0"
+  }
+}
