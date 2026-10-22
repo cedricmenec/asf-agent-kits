@@ -103,6 +103,14 @@ async function readBoundedJson(response, maxBytes, signal) {
     try { reader.releaseLock(); } catch { /* already closed */ }
   }
   if (!total) reject('empty response');
+  // Fetch runtimes can transparently decompress a response while leaving its
+  // original compressed Content-Length header untouched. Only assert exact
+  // transfer length for unencoded/identity responses, not for gzip/br/zstd.
+  const declaredLength = response.headers.get('content-length');
+  const contentEncoding = response.headers.get('content-encoding');
+  if (declaredLength !== null &&
+      (contentEncoding === null || contentEncoding.trim().toLowerCase() === 'identity') &&
+      total !== Number(declaredLength)) reject('incomplete or inconsistent response length');
   let parsed;
   try {
     const data = Buffer.concat(chunks.map(c => Buffer.from(c)), total);

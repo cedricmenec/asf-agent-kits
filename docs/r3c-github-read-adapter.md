@@ -27,6 +27,7 @@ Le `transport(url, options)` doit être fourni par une autorité **indépendante
 - Cible HTTPS constante `https://api.github.com` ; dépôt/branche/SHA complets figés à la création, aucun URL ou token arbitrable par une tâche.
 - **GET uniquement**, `redirect: manual`, aucune tentative de retry ; chemins autorisés : objet dépôt, branche attendue, liste/détail rulesets, checks au commit attendu, `AGENTS.md` ou `.asf/agentkit.yaml` ancrés sur ce SHA. Tout chemin, encodage, query ou fragment différent est refusé **avant transport**.
 - HTTP 200, absence de redirection, URL de réponse identique, type JSON, taille du corps **bornée durant sa lecture en streaming** (2 Mio par défaut), durée maximum 5 s par lecture, annulation sur dépassement. Les erreurs et détails internes du transport ne sont pas propagés, pour limiter les fuites.
+- Pour une réponse sans compression, le nombre d’octets lu doit correspondre exactement à `Content-Length` quand celui-ci est fourni. Si le transport a décompressé le flux, cette égalité avec la longueur compressée ne peut pas être exigée ; le plafond strict reste appliqué aux octets **effectivement lus**.
 - Refus d'une pagination `rel=next`, de listes de rulesets trop grandes, de `total_count` des checks incohérent avec leur nombre reçu, des objets JSON mal formés et de l'absence de corps lisible.
 - Ne jamais confondre SHA épinglé et garantie atomique : les deux lectures R3b détectent seulement certains changements de ref ; une écriture future exigerait sa propre condition CAS après autorisation.
 

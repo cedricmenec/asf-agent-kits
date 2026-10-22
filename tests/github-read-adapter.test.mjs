@@ -126,6 +126,18 @@ test('hard stream cap despite understated Content-Length',async()=>{
   const get=configured(async url=>response(url,REPO,{bytes:Buffer.alloc(300,65),headers:{'content-length':'1'}}),{maxBytes:256});
   await assert.rejects(get(BASE),isDenied);
 });
+test('reject a syntactically valid but shorter uncompressed body than declared',async()=>{
+  const get=configured(async url=>response(url,REPO,{headers:{'content-length':'100000'}}));
+  await assert.rejects(get(BASE),isDenied);
+});
+test('reject a syntactically valid but longer uncompressed body than declared',async()=>{
+  const get=configured(async url=>response(url,REPO,{headers:{'content-length':'1'}}));
+  await assert.rejects(get(BASE),isDenied);
+});
+test('do not confuse compressed wire length with decompressed stream length',async()=>{
+  const get=configured(async url=>response(url,REPO,{headers:{'content-length':'1','content-encoding':'gzip'}}));
+  assert.deepEqual(await get(BASE),REPO);
+});
 test('reject missing readable stream',async()=>{
   const get=configured(async url=>({...response(url),body:null}));
   await assert.rejects(get(BASE),isDenied);
