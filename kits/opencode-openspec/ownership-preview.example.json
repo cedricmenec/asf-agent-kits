@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "kitId": "opencode-openspec",
+  "managedFiles": [
+    {
+      "path": ".asf/agentkit/opencode-openspec-info.md",
+      "overlayPolicy": "preserve-and-block"
+    }
+  ]
+}
