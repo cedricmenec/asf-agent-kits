@@ -178,6 +178,16 @@ class DraftPrPreviewTests(unittest.TestCase):
         self.ownership['operations'][0]['action']='unchanged'
         self.denied(transition)
 
+    def test_noncanonical_semver_is_rejected_in_draft_title(self):
+        self.release['kitVersion']='01.2.4'
+        self.release['releaseTag']='kits/opencode-direct/v01.2.4'
+        self.denied()
+
+    def test_oversized_semver_is_rejected_in_draft_title(self):
+        self.release['kitVersion']='999999999999999999999.2.4'
+        self.release['releaseTag']='kits/opencode-direct/v999999999999999999999.2.4'
+        self.denied()
+
     def test_new_install_must_not_silently_take_existing_files(self):
         self.ownership['operations'][0]['action']='unchanged'
         self.denied()
