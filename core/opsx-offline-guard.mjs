@@ -115,8 +115,8 @@ export function previewOfflineOpsxArchive(hostPolicy,syncResult,beforeArchive,af
     ['kind','headSha','policyDigest','afterFingerprint','changedCanonicalPaths',
       ...Object.keys(safeFlags)],'synthetic sync preview');
   if(s.kind!=='r3f03-offline-sync-preview'||s.headSha!==p.headSha||
-    s.policyDigest!==hash(p)||s.semanticRequirementsIndependentlyVerified!==false||
-    s.authorizedToExecute!==false||s.opsxCommandInvoked!==false)
+    s.policyDigest!==hash(p)||
+    Object.keys(safeFlags).some(key=>s[key]!==safeFlags[key]))
     deny('mismatched or privileged sync preview');
   const b=inventory(beforeArchive,p),a=inventory(afterArchive,p);
   if(signature(p,b)!==s.afterFingerprint)deny('archive input differs from checked sync output');
