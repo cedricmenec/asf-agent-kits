@@ -26,7 +26,7 @@ function event(phase='plan'){
     nextHeadSha:phase==='plan'?B:phase==='apply'||phase==='auto'?C:D,
     intermediatePlanSha:phase==='auto'?B:null,
     changedPaths:phase==='plan'?planPaths():phase==='apply'?applyPaths():
-      phase==='auto'?[...planPaths(),...applyPaths()]:finalPaths(),
+      phase==='auto'?[...new Set([...planPaths(),...applyPaths()])]:finalPaths(),
     checklist:tasks(phase!=='plan'),verifications:checks(phase==='finalize')};
 }
 const denied=x=>x instanceof OfflinePhaseError && x.message.startsWith('R3f DENY:');
@@ -84,7 +84,7 @@ for(const [name,phase,previous] of [
 test('stale SHA and wrong observed ref fail closed',()=>{
   const p=planned();
   for(const field of ['expectedHeadSha','observedHeadSha','nextHeadSha']){
-    const e=event('apply');e[field]=A;
+    const e=event('apply');e[field]=field==='nextHeadSha'?B:A;
     assert.throws(()=>preview(policy(),p,e),denied);
   }
 });
