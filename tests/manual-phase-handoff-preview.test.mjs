@@ -104,7 +104,7 @@ for(const [name,mutate,phase='plan'] of [
   ['forged next head',f=>f.event.nextHeadSha=A],
   ['fake independent CI',f=>f.event.verifications.independentCi=true],
   ['unchecked apply checklist',f=>f.event.checklist=checklist(false),'apply'],
-  ['tampered prior digest',f=>f.previousCheckpoint.digest='0'.repeat(64),'apply'],
+  ['tampered prior digest',f=>{f.previousCheckpoint={...f.previousCheckpoint,digest:'0'.repeat(64)};},'apply'],
   ['stale apply SHA',f=>f.request.expectedHeadSha=A,'apply'],
   ['moved apply event SHA',f=>f.event.expectedHeadSha=A,'apply'],
   ['unknown top-level override',f=>f.modelToken='TOPSECRET'],
