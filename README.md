@@ -1,6 +1,6 @@
 # ASF Agent Kits
 
-**Status: offline prototypes R0/R1/R2a/R2b/R2c/R2d-01 to R2d-04 and consultative R3a to R3e-02 integrated on `main`. NOT an installable, authenticated or released agent kit. Confirm current GitHub status before relying on this summary.**
+**Status (23 Oct 2026): offline R0/R1/R2a–R2d, R3a–R3e-02, R3f-01–04 and R3g-01–05 prototypes integrated on `main`; SEC-02a and SEC-02b-01 synthetic release checks integrated. NOT an installable, independently authenticated, attestable or released kit. Verify the latest refs/PRs/CI before relying on this dated status.**
 
 This repository is intended to publish independently versioned, portable, manually-triggered agent kits for GitHub repositories. Initially it specifies:
 
@@ -22,11 +22,16 @@ The executable shared core, trusted release publication, installer, upgrade/roll
 - `tools/build_candidate.py`: R2c read-only canonical JSON release-candidate generator with SHA-256 of local selected artifacts, no remote verification; see `docs/r2c-candidate-builder.md`.
 - `tools/render_templates.py`, `compose_preview.py`, `plan_rendered_preview.py`, `plan_ownership.py`: R2d-01 to R2d-04 deterministic, non-writing previews. They detect conflicts, but do not prove source authenticity or provide a safe installer.
 - `core/manual-policy.mjs`, `github-gates.mjs`, `github-read-adapter.mjs`, `host-bound-github-gate.mjs`, `synthetic-host-bootstrap.mjs`: consultative/manual gates, restricted GitHub GET and **synthetic** host identity checks. No authenticated runtime credential boundary is implemented.
+- `core/openspec-offline-phases.mjs`, `openspec-offline-resume.mjs`, `opsx-offline-guard.mjs`, `openspec-offline-cycle.mjs`: strictly simulated OpenSpec plan/apply/finalize, mock checkpoints, checklist, sync and archive. No real agent execution or OPSX semantic sync.
+- `core/local-fixture-inventory.mjs`, `local-fixture-qualification.mjs`, `tools/inventory_fdrelative.py`, `verify_local_git_fixture.py`: disposable local byte/lock/Git object qualification. `tests/r3g05-integrated-recipe.test.mjs` composes these fixtures and R3f, without authenticating a GitHub remote.
+- `tools/check_release_claim.py` and `preview_synthetic_release.py`: release claim schema and offline artifact byte consistency against **synthetic** tag and permission observations, not attested GitHub releases.
 - `tests/`: non-paid tests for the catalogue prototypes.
 - `examples/`: synthetic, non-installed examples; placeholder identifiers are not real releases.
 - `docs/`: ADR, release policy, security boundaries, and development roadmap.
 
 Run `npm run check` with Node.js 22+ and Python 3.12+ with the pinned dependencies in `requirements-contracts.txt` installed. The CI installs them and runs `actionlint` on GitHub Actions workflows. This command does not invoke GitHub Apps, OpenRouter, OpenCode or a paid model.
+
+See [docs/roadmap.md](docs/roadmap.md) for the updated R3f/R3g/SEC-02b evidence and exact remaining gates. R3e-03 real host identity, SEC-02 tag/release provenance, R3 manual runtime, optional R4, safe PR installer R5, qualification R6 and owner-approved activation R7 remain unfinished. Integrating a simulated test cannot make an operational grant true.
 
 ## Intended future repository-level installation
 
