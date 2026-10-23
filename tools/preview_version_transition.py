@@ -31,6 +31,7 @@ def _version(value):
 
 def _safe(path):
     if (type(path) is not str or len(path) > 320 or unsafe_path(path) or
+        path.endswith('/') or any(not component for component in path.split('/')) or
         any(ord(c) < 32 or ord(c) == 127 for c in path) or
         '\\' in path or not path.isascii() or
         any(part.casefold() in {x.casefold() for x in _FORBIDDEN}
