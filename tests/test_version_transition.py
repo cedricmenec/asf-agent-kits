@@ -11,7 +11,7 @@ from preview_version_transition import preview_version_transition, TransitionPre
 
 class UpgradePreviewTests(unittest.TestCase):
     def setUp(self):
-        self.path = 'docs/agentkit.md'
+        self.path = '.asf/agentkit/kit.md'
         self.hash_old = hashlib.sha256(b'previous\n').hexdigest()
         self.hash_new = hashlib.sha256(b'candidate\n').hexdigest()
         self.kit = 'opencode-direct'
@@ -61,11 +61,11 @@ class UpgradePreviewTests(unittest.TestCase):
         self.assertEqual(self.preview()['changes'][0]['action'], 'unchanged')
 
     def test_addition_is_readonly(self):
-        self.next['artifacts'].append({'path':'docs/second.md','sha256':'c'*64})
+        self.next['artifacts'].append({'path':'.asf/agentkit/second.md','sha256':'c'*64})
         self.assertEqual(self.preview()['changes'][-1]['action'],'propose-create')
 
     def test_removal_is_hard_block_not_silent_deletion(self):
-        self.existing['kits'][0]['managedFiles']['docs/removed.md'] = 'c'*64
+        self.existing['kits'][0]['managedFiles']['.asf/agentkit/removed.md'] = 'c'*64
         result = self.preview()
         self.assertEqual(result['status'],'blocked')
         self.assertEqual(result['conflicts'],1)
@@ -109,11 +109,11 @@ class UpgradePreviewTests(unittest.TestCase):
         self.denied()
 
     def test_case_collision_path_denied(self):
-        self.next['artifacts'].append({'path': 'DOCS/AGENTKIT.MD','sha256':'f'*64})
+        self.next['artifacts'].append({'path': '.asf/agentkit/KIT.MD','sha256':'f'*64})
         self.denied()
 
     def test_path_traversal_denied(self):
-        self.next['artifacts'][0]['path']='docs/../secret.md'
+        self.next['artifacts'][0]['path']='.asf/agentkit/../secret.md'
         self.denied()
 
     def test_protected_file_denied(self):
@@ -121,7 +121,35 @@ class UpgradePreviewTests(unittest.TestCase):
         self.denied()
 
     def test_unsafe_nested_key_denied(self):
-        self.existing['kits'][0]['managedFiles']['docs/secret.pem']='c'*64
+        self.existing['kits'][0]['managedFiles']['.asf/agentkit/secret.pem']='c'*64
+        self.denied()
+
+    def test_candidate_path_outside_r2d_namespace_denied(self):
+        self.next['artifacts'][0]['path'] = 'docs/agentkit.md'
+        self.denied()
+
+    def test_lock_path_outside_r2d_namespace_denied(self):
+        self.existing['kits'][0]['managedFiles'] = {'docs/agentkit.md': self.hash_old}
+        self.denied()
+
+    def test_agentkit_config_file_is_reserved(self):
+        self.next['artifacts'][0]['path'] = '.asf/agentkit.yaml'
+        self.denied()
+
+    def test_agentkit_lock_file_is_reserved(self):
+        self.next['artifacts'][0]['path'] = '.asf/agentkit.lock.json'
+        self.denied()
+
+    def test_other_asf_namespace_is_reserved(self):
+        self.next['artifacts'][0]['path'] = '.asf/other/tool.mjs'
+        self.denied()
+
+    def test_prefix_case_alias_is_reserved(self):
+        self.next['artifacts'][0]['path'] = '.ASF/agentkit/kit.md'
+        self.denied()
+
+    def test_trailing_separator_is_reserved(self):
+        self.next['artifacts'][0]['path'] = '.asf/agentkit/subdir/'
         self.denied()
 
     def test_other_kit_ownership_collision_denied(self):
