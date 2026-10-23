@@ -1,0 +1,11 @@
+# SEC-02b-01: offline evidence/byte consistency preview
+
+Only compares untrusted release claims (SEC-02a), synthetic tag/permission observations and actual bytes from host-created disposable fixture trees. `tools/preview_synthetic_release.py` is a test-oriented **consultative** function. It is not an attestor, installer, GitHub adapter or release workflow.
+
+- Host policy has exact `repository`, `kitId`, `tag`, `commitSha` and `checkAppId` fields, all synthetically supplied by the caller. It is **not** independently authenticated. Observed repository/tag/target SHA/publisher App, simulated `mainProtected`/`tagImmutable` booleans and minimal read-only permissions must match.
+- SEC-02a schema/semantics are applied to the claim first, and its manifest SHA-256 is checked against caller-supplied fixture bytes. Artifact files are read with the Linux R3g-03 fd-relative, `O_NOFOLLOW`-based bounded inventory. Exact allowlisted path and content digests are compared, refusing additional files, symlinks, mutated bytes or executable modes.
+- All outputs unequivocally keep `hostIndependentlyAuthenticated=false`, `sourceProvenanceVerified=false`, `trustEvidenceIndependentlyVerified=false`, `authorizedToExecute=false`, `promotionAllowed=false`, `writesPerformed=false`, `paidApprovalRequired=true`. A positive fixture only proves local consistency with **forged or simulated** observations. This function cannot elevate its own observations into trust.
+
+Tests `python3 -m unittest tests/test_synthetic_release.py` with the normal Python/Node/actionlint CI are non-paying, temporary-only, and cover positive + hostile fixtures. No GitHub GET, protected ref, tag, release, secret, App, permission, ruleset update, OpenCode/OPSX or paid model is involved.
+
+SEC-02 is **still open**: authenticated tag/ref lineage, true publisher identity, independently signed attestation, immutable ruleset administration and verified release source remain unresolved. R3e-03 (trusted authenticated host) and an action-specific owner authorization are prerequisites for the real gate. No synthetic boolean such as `tagImmutable=true` is evidence that GitHub enforces a ruleset. Snapshots are not globally atomic; R5/R6 must resolve that limitation before deployment.
