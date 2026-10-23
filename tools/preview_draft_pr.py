@@ -10,7 +10,7 @@ import re
 from validate_contracts import validate
 from plan_ownership import canonical_owned, RenderError
 
-_SHA256 = re.compile(r'[a-f0-9]{64}\Z')
+_STABLE_VERSION = re.compile(r'(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\Z')
 
 
 class PrPreviewError(ValueError):
@@ -126,7 +126,8 @@ def _validate_transition(transition, manifest):
 def preview_draft_pr(manifest, ownership, transition=None):
     """Return a deterministic preview with NO source, write or merge authority."""
     try:
-        if type(manifest) is not dict or validate('release', manifest):
+        if (type(manifest) is not dict or validate('release', manifest) or
+            _STABLE_VERSION.fullmatch(manifest['kitVersion']) is None):
             _deny()
         release_files = {item['path']: item['sha256'] for item in manifest['artifacts']}
         _paths(list(release_files))
