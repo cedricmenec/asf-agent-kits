@@ -1,6 +1,6 @@
 # ASF Agent Kits
 
-**Status: R0/R1/R2a/R2b merged to main; R2c deterministic local candidate builder in a draft PR. NOT an installable or released agent kit.**
+**Status: offline prototypes R0/R1/R2a/R2b/R2c/R2d-01 to R2d-04 and consultative R3a to R3e-02 integrated on `main`. NOT an installable, authenticated or released agent kit. Confirm current GitHub status before relying on this summary.**
 
 This repository is intended to publish independently versioned, portable, manually-triggered agent kits for GitHub repositories. Initially it specifies:
 
@@ -12,14 +12,16 @@ The executable shared core, trusted release publication, installer, upgrade/roll
 ## Current development contents
 
 - `schemas/`: provisional JSON Schema contracts for target configuration, installation lock, and release manifest.
-- `kits/`: **metadata skeletons only**. These directories are not executable bundles.
-- `core/`: planned shared safeguards, without runtime code yet.
+- `kits/`: **metadata skeletons and synthetic offline examples only**; no executable AgentKit distribution.
+- `core/`: consultative manual policy, GitHub read gates and R3e-02 synthetic host preflight; none authenticates a real GitHub App or authorizes execution.
 - `tools/validate_contracts.py`: **formal Draft 2020-12** JSON Schema verification with independent semantic checks.
 - `tools/check-contracts.mjs`: supplemental R0 smoke checks; **not** the authority for schema conformance.
 - `tests/fixtures/`: positive and negative JSON fixtures for all three contract types.
 - `tools/plan_install.py`: R2a **read-only**, deterministic `status` and `plan` using synthetic candidate manifests; see `docs/r2a-planner.md`. It cannot install a kit or attest a GitHub release.
 - `tools/plan_merge.py`: R2b read-only three-way preview, no apply, source provenance unverified.
 - `tools/build_candidate.py`: R2c read-only canonical JSON release-candidate generator with SHA-256 of local selected artifacts, no remote verification; see `docs/r2c-candidate-builder.md`.
+- `tools/render_templates.py`, `compose_preview.py`, `plan_rendered_preview.py`, `plan_ownership.py`: R2d-01 to R2d-04 deterministic, non-writing previews. They detect conflicts, but do not prove source authenticity or provide a safe installer.
+- `core/manual-policy.mjs`, `github-gates.mjs`, `github-read-adapter.mjs`, `host-bound-github-gate.mjs`, `synthetic-host-bootstrap.mjs`: consultative/manual gates, restricted GitHub GET and **synthetic** host identity checks. No authenticated runtime credential boundary is implemented.
 - `tests/`: non-paid tests for the catalogue prototypes.
 - `examples/`: synthetic, non-installed examples; placeholder identifiers are not real releases.
 - `docs/`: ADR, release policy, security boundaries, and development roadmap.
@@ -39,7 +41,7 @@ Merely merging a ruleset JSON file in a PR does **not** apply GitHub Settings.
 
 ## Source of truth
 
-Read `AGENTS.md`, `ChatGPT.md`, `docs/adr/0001-catalogue-distribution.md` and the [ASF AgentKit Notion specification](https://app.notion.com/p/40012ac916368112b7fbc8d25dbb9838). Notion is the design reference; code on protected `main` is the current source for the non-executable tooling, while actual releases and installed artifacts do not yet exist. Confirm GitHub state before making any live claim.
+Read `AGENTS.md`, `ChatGPT.md`, `docs/adr/0001-catalogue-distribution.md` and the [ASF AgentKit Notion specification](https://app.notion.com/p/40012ac916368112b7fbc8d25dbb9838). Notion is the design reference; code on protected `main` is the current source for non-operational tooling. Track verified progress in the [living roadmap](https://app.notion.com/p/40112ac91636818dab99de3813963c0c). No installable release, effective installation or authenticated host was verified by these prototypes. Confirm GitHub state before making any live claim.
 
 ## Versioning
 
