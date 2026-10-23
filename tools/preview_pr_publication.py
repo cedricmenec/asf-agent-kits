@@ -66,7 +66,10 @@ def _safe_path(path):
         len(path) > 320 or not path.startswith(".asf/agentkit/")):
         _deny()
     parts = path.split("/")
+    reserved = {".git", ".github", ".asf", ".agents", ".opencode", "node_modules",
+                "AGENTS.md", "ChatGPT.md", "opencode.json"}
     if (len(parts) < 3 or any(not x or x in (".", "..") for x in parts) or
+        any(p.casefold() in {n.casefold() for n in reserved} for p in parts[2:]) or
         any(x.casefold().startswith(".env") or
             x.casefold().endswith((".pem", ".p12", ".pfx", ".key"))
             for x in parts) or
