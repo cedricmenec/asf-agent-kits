@@ -1,6 +1,6 @@
 # ASF Agent Kits
 
-**Status (23 Oct 2026): offline R0/R1/R2a–R2d, R3a–R3e-02, R3f-01–04 and R3g-01–05 prototypes integrated on `main`; SEC-02a and SEC-02b-01 synthetic release checks, plus R5a-01/02/03 and R5b-01 read-only install/upgrade/PR previews integrated. NOT an installable, independently authenticated, attestable or released kit. Verify the latest refs/PRs/CI before relying on this dated status.**
+**Status (23 Oct 2026): offline R0/R1/R2a–R2d, R3a–R3e-02, R3f-01–04 and R3g-01–05 prototypes integrated on `main`; SEC-02a and SEC-02b-01 synthetic release checks, plus R5a-01/02/03, R5b-01 and R5b-02a read-only install/upgrade/PR publication previews and R3h-01/R6a-01 offline handoff/qualification integrated. NOT an installable, independently authenticated, attestable or released kit. Verify the latest refs/PRs/CI before relying on this dated status.**
 
 This repository is intended to publish independently versioned, portable, manually-triggered agent kits for GitHub repositories. Initially it specifies:
 
@@ -28,13 +28,16 @@ The executable shared core, trusted release publication, installer, upgrade/roll
 - `tools/inspect_installation_status.py`: R5a-01 reports `unmanaged-legacy`, `drifted` or `unknown` without ever granting `verified` or source attestation.
 - `tools/preview_version_transition.py`: R5a-02/03 strict SemVer upgrade preflight, with R2d's exact `.asf/agentkit/` managed namespace and removal/ownership conflicts; no target writes.
 - `tools/preview_draft_pr.py`: R5b-01 purely in-memory advisory draft-PR plan composition, **not** an actual branch/commit/PR publisher.
+- `core/manual-phase-handoff-preview.mjs`: R3h-01 pure R3a/R3f manual phase/checkpoint handoff and simulated concurrency gate; no OpenCode or paid runner.
+- `tools/preview_pr_publication.py`: R5b-02a synthetic target branch/SHA/check/concurrency publication preflight, never a real GitHub PR or authority.
+- `tools/qualify_local_installation_fixture.py`: R6a-01 disposable local target check composing read-only R5a/R5b previews and simulated publisher; not globally atomic or authenticated.
 - `tests/`: non-paid tests for the catalogue prototypes.
 - `examples/`: synthetic, non-installed examples; placeholder identifiers are not real releases.
 - `docs/`: ADR, release policy, security boundaries, and development roadmap.
 
 Run `npm run check` with Node.js 22+ and Python 3.12+ with the pinned dependencies in `requirements-contracts.txt` installed. The CI installs them and runs `actionlint` on GitHub Actions workflows. This command does not invoke GitHub Apps, OpenRouter, OpenCode or a paid model.
 
-See [docs/roadmap.md](docs/roadmap.md) for the updated R3f/R3g/SEC-02b/R5a/R5b evidence and remaining gates. The R5 previews do not grant actual repository installation or publishing authority. R3e-03 real host identity, SEC-02 tag/release provenance, R3 manual runtime, optional R4, safe PR installer R5, qualification R6 and owner-approved activation R7 remain unfinished. Integrating a simulated test cannot make an operational grant true.
+See [docs/roadmap.md](docs/roadmap.md) for the updated R3f/R3g/R3h/SEC-02b/R5a/R5b/R6a evidence and remaining gates. The R5 previews do not grant actual repository installation or publishing authority. R3e-03 real host identity, SEC-02 tag/release provenance, R3 manual runtime, optional R4, safe PR installer R5, qualification R6 and owner-approved activation R7 remain unfinished. Integrating a simulated test cannot make an operational grant true.
 
 ## Intended future repository-level installation
 
