@@ -10,8 +10,9 @@ import re
 from validate_contracts import validate, unsafe_path
 
 _VERSION = re.compile(r"(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\Z")
-_FORBIDDEN = {'.git', '.github', '.asf', '.agents', '.opencode',
+_FORBIDDEN = {'.git', '.github', '.agents', '.opencode',
               'AGENTS.md', 'ChatGPT.md', 'opencode.json'}
+_MANAGED_PREFIX = '.asf/agentkit/'
 
 
 class TransitionPreviewError(ValueError):
@@ -30,12 +31,13 @@ def _version(value):
 
 
 def _safe(path):
-    if (type(path) is not str or len(path) > 320 or unsafe_path(path) or
+    if (type(path) is not str or len(path) > 320 or
+        not path.startswith(_MANAGED_PREFIX) or unsafe_path(path) or
         path.endswith('/') or any(not component for component in path.split('/')) or
         any(ord(c) < 32 or ord(c) == 127 for c in path) or
         '\\' in path or not path.isascii() or
         any(part.casefold() in {x.casefold() for x in _FORBIDDEN}
-            for part in path.split('/')) or
+            for part in path.split('/')[2:]) or
         any(x.casefold().startswith('.env') or x.casefold().endswith(
             ('.pem', '.p12', '.pfx', '.key')) for x in path.split('/'))):
         _deny()
