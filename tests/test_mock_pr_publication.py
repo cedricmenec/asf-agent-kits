@@ -162,6 +162,14 @@ class MockPrPublisherTests(unittest.TestCase):
         self.plan['files'].append(copy.deepcopy(self.plan['files'][0]))
         self.denied()
 
+    def test_protected_nested_subdir_denied(self):
+        self.plan['files'][0]['path'] = '.asf/agentkit/.github/workflows/ci.yml'
+        self.denied()
+
+    def test_secret_path_denied(self):
+        self.plan['files'][0]['path'] = '.asf/agentkit/.env.production'
+        self.denied()
+
     def test_file_checksum_invalid_denied(self):
         self.plan['files'][0]['declaredSha256']='bad'
         self.denied()
