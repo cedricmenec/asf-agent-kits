@@ -186,3 +186,11 @@ export function previewOpenSpecTransition(hostPolicy,previous,input) {
     sourceProvenanceVerified:false,trustEvidenceIndependentlyVerified:false,
     promotionAllowed:false,writesPerformed:false,paidApprovalRequired:true});
 }
+
+/** Reparse a synthetic checkpoint against its host policy, without granting trust. */
+export function inspectOfflineCheckpoint(hostPolicy, snapshot) {
+  const policy=trustedPolicy(hostPolicy);
+  const checkpoint=readPrevious(policy, snapshot);
+  if(checkpoint===null)deny('missing synthetic checkpoint');
+  return Object.freeze({...checkpoint});
+}
