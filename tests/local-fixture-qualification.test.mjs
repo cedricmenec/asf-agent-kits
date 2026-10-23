@@ -106,7 +106,7 @@ for(const [label,modify] of [
   ['lock invalid SHA',x=>x.lock.files[0].sha256='bad'],
   ['request injection',x=>x.paidRetry=true],
   ['unknown checkpoint grant',x=>x.checkpoint.authorizedToExecute=true],
-  ['forged checkpoint',x=>x.checkpoint.chain[1].digest='0'.repeat(64)],
+  ['forged checkpoint',x=>{x.checkpoint.chain[1]={...x.checkpoint.chain[1],digest:'0'.repeat(64)};}],
   ['stale checkpoint HEAD',x=>x.checkpoint.observed.headSha=B],
   ['failed independent synthetic CI',x=>x.checkpoint.observed.check.conclusion='failure'],
   ['concurrent workflow run',x=>x.checkpoint.observed.activeWorkflowRuns=1],
