@@ -32,7 +32,7 @@ function inspectPrivateRoot(root) {
 function openNofollow(file,modeBits) {
   if(!Number.isInteger(constants.O_NOFOLLOW) ||
     !Number.isInteger(constants.O_DIRECTORY)) deny();
-  return openSync(file,modeBits|constants.O_NOFOLLOW);
+  return openSync(file,modeBits|constants.O_NOFOLLOW,0o600);
 }
 function syncDirectory(root) {
   const fd=openNofollow(root,constants.O_RDONLY|constants.O_DIRECTORY);
