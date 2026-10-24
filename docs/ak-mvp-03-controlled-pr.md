@@ -1,7 +1,7 @@
 # AK-MVP-03: controlled draft installation PR candidate
 
 Status: **review-only candidate; no live target publication has been qualified**.
-This implementation follows #88 (merged PR #93) and #89 (draft PR #94).
+This implementation follows #88 (merged PR #93) and #89 (merged PR #94).
 It introduces no GitHub App or repository permission changes and makes no
 paid request. A real target PR is a separate approval/qualification step.
 
