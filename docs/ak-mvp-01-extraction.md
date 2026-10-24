@@ -55,8 +55,10 @@ configuration and an independent protected CI. No such setup is performed here.
 
 - Locally validate the rendered YAML with actionlint and exercise all non-paying
   scopes and negative request cases.
-- Before closing #88, qualify the actual plan/apply/finalize execution behavior
-  on a disposable target fixture, without an LLM call.
+- A disposable Git fixture now exercises plan/apply/finalize and scoped
+  modifications with **mock OpenSpec/OpenCode/npm binaries**, proving the
+  phase plumbing without a model/network call. This is not real OPSX or
+  GitHub App qualification; those integration gates remain open.
 - AK-MVP-02 supplies source verification, lock, collisions and real checkout
   installation; AK-MVP-03 controls remote PR publication and read-only setup.
 - AK-MVP-04 requires separate owner authorization for a second repository,

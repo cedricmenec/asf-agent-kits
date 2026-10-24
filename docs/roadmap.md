@@ -6,6 +6,15 @@
 
 This is a dependency plan, **not** proof of completed runtime implementation.
 
+**#88 progress candidate (PR #93, draft, not merged):** configurable,
+renderable OpenCode+OpenSpec manual executor, one trusted workflow destination
+and eight namespaced runtime/instruction files, isolated model/publisher jobs,
+read-only renderer and synthetic no-pay fixture of plan/apply/finalize.
+Independent CI/actionlint and security review are required. Mocked external
+CLIs do not validate a real provider run or live GitHub App writer. Next
+priority remains the #89 local install/doctor CLI with immutable source and
+collision/lock checks, not new R3h simulations.
+
 - **R0, scaffold**: project structure, provisional JSON schemas, ADR, kit descriptors and offline tests. This folder is the initial artifact.
 - **R1, contract validation**: formal Draft 2020-12 validator + positive/negative fixtures; GitHub CI with pinned actionlint, tested at the exact PR SHA; no payments. (Integrated on main; SHA-exact CI green.)
 - **R2, offline renderer/status (prototypes integrated)**: R2a status/dry-run, R2b three-way merge preview, R2c canonical candidate manifest, and R2d-01/02/03/04 deterministic template previews, manifest composition, target collision detection and explicit ownership/overlay rejection. All remain read-only, with no verified source provenance, atomic installer or runtime activation. See PR #25, #27, #29 and #31.
