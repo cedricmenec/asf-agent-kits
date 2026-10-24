@@ -15,8 +15,15 @@ The executable shared core, trusted release publication, installer, upgrade/roll
 
 ## Current development contents
 
+**AK-MVP-01 #88 / draft PR #93:** A real manual OpenCode+OpenSpec template
+candidate is now renderable and smoke-testable without payment using
+[`tools/render_mvp_kit.py`](tools/render_mvp_kit.py) and
+[the extraction audit](docs/ak-mvp-01-extraction.md). This is not a trusted
+release, installation, activated workflow or live GitHub/App qualification.
+The local installer and doctor CLI still belong to #89.
+
 - `schemas/`: provisional JSON Schema contracts for target configuration, installation lock, and release manifest.
-- `kits/`: **metadata skeletons and synthetic offline examples only**; no executable AgentKit distribution.
+- `kits/`: historical metadata and synthetic examples plus the #88 **unqualified, uninstalled** workflow/runtime templates in `kits/opencode-openspec/templates/`.
 - `core/`: consultative manual policy, GitHub read gates and R3e-02 synthetic host preflight; none authenticates a real GitHub App or authorizes execution.
 - `tools/validate_contracts.py`: **formal Draft 2020-12** JSON Schema verification with independent semantic checks.
 - `tools/check-contracts.mjs`: supplemental R0 smoke checks; **not** the authority for schema conformance.
@@ -25,6 +32,7 @@ The executable shared core, trusted release publication, installer, upgrade/roll
 - `tools/plan_merge.py`: R2b read-only three-way preview, no apply, source provenance unverified.
 - `tools/build_candidate.py`: R2c read-only canonical JSON release-candidate generator with SHA-256 of local selected artifacts, no remote verification; see `docs/r2c-candidate-builder.md`.
 - `tools/render_templates.py`, `compose_preview.py`, `plan_rendered_preview.py`, `plan_ownership.py`: R2d-01 to R2d-04 deterministic, non-writing previews. They detect conflicts, but do not prove source authenticity or provide a safe installer.
+- `tools/render_mvp_kit.py` and `qualify_mvp_render.py`: #88 destination allowlist (including one workflow), nine runtime/instruction templates, byte/parse checks and mocked non-paying plan/apply/finalize qualification; not a source-verified installer.
 - `core/manual-policy.mjs`, `github-gates.mjs`, `github-read-adapter.mjs`, `host-bound-github-gate.mjs`, `synthetic-host-bootstrap.mjs`: consultative/manual gates, restricted GitHub GET and **synthetic** host identity checks. No authenticated runtime credential boundary is implemented.
 - `core/openspec-offline-phases.mjs`, `openspec-offline-resume.mjs`, `opsx-offline-guard.mjs`, `openspec-offline-cycle.mjs`: strictly simulated OpenSpec plan/apply/finalize, mock checkpoints, checklist, sync and archive. No real agent execution or OPSX semantic sync.
 - `core/local-fixture-inventory.mjs`, `local-fixture-qualification.mjs`, `tools/inventory_fdrelative.py`, `verify_local_git_fixture.py`: disposable local byte/lock/Git object qualification. `tests/r3g05-integrated-recipe.test.mjs` composes these fixtures and R3f, without authenticating a GitHub remote.

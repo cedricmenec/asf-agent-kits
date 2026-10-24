@@ -1,0 +1,21 @@
+# AgentKit manual acceptance checklist
+
+This is a deployed instruction file, not evidence of completion or consent.
+
+- Verify the target `@@TARGETREPOSITORY@@`, default branch `@@DEFAULTBRANCH@@`,
+  backlog convention `@@TASKDIRECTORY@@/@@TASKPREFIX@@-NNN.md`, and `openspec/config.yaml`.
+- Independently configure a `check` script in `package.json` or change the
+  reviewed kit setting to the target's script `@@CHECKSCRIPT@@`.
+- Review GitHub App installation and permissions. Variable `@@APPIDVAR@@`,
+  secrets `@@APPPRIVATEKEYSECRET@@` and `@@OPENROUTERSECRET@@` need manual owner setup;
+  the kit never writes or displays them.
+- Audit GitHub Settings protection/required CI independently. Do not infer
+  applied rules from checked-in configuration.
+- Every workflow dispatch may use paid model calls. The repository owner must
+  explicitly type `I_AUTHORIZE_ONE_PAID_PHASE` for EACH first-attempt phase.
+- Do not re-run a failed paid job. Inspect the remote branch, PR and provider
+  usage first; a later phase requires a new authorization.
+- Keep every resulting PR in draft until independent CI at its exact SHA and
+  required manual acceptance are verified. No auto-merge is installed.
+
+This runtime intentionally does not install the GitHub App, secrets or rulesets.
