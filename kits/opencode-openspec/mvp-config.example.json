@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "targetRepository": "example/qualification-repository",
+  "defaultBranch": "main",
+  "taskPrefix": "TS",
+  "taskDirectory": "backlog/tasks",
+  "checkScript": "check",
+  "appIdVar": "APP_ID",
+  "appPrivateKeySecret": "APP_PRIVATE_KEY",
+  "openRouterSecret": "OPENROUTER_API_KEY",
+  "mutexGroup": "agentkit-paid-development-v1"
+}

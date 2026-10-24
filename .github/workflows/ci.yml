@@ -37,3 +37,8 @@ jobs:
           go install github.com/rhysd/actionlint/cmd/actionlint@03d0035246f3e81f36aed592ffb4bebf33a03106
           "$(go env GOPATH)/bin/actionlint" -version
           "$(go env GOPATH)/bin/actionlint" -color
+      - name: Qualify rendered OpenCode/OpenSpec kit, no LLM or installation
+        run: |
+          python3 tools/qualify_mvp_render.py \
+            --config kits/opencode-openspec/mvp-config.example.json \
+            --actionlint "$(go env GOPATH)/bin/actionlint"

@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Adapted from the manual ThreadStep workflow; sourced ONLY from trusted base.
+set -euo pipefail
+
+task_file="@@TASKDIRECTORY@@/$TASK_ID.md"
+change="openspec/changes/$CHANGE_ID"
+test -s "$task_file"
+test -s openspec/config.yaml
+test "$PHASE" = plan || test "$PHASE" = apply || test "$PHASE" = finalize
+
+export OPENSPEC_NO_UPDATE_CHECK=1
+export OPENSPEC_NO_ANIMATION=1
+test -s package-lock.json || { echo '::error::Target package-lock.json required'; exit 1; }
+npm ci --ignore-scripts
+openspec init --tools opencode,agents
+test -s .opencode/commands/opsx-sync.md
+test -s .opencode/skills/openspec-sync-specs/SKILL.md
+# These generated local instructions must not enter the commit/PR.
+printf '\n/.opencode/\n/.agents/\n' >> .git/info/exclude
+
+if [[ "$PHASE" == plan ]]; then
+  test ! -d "$change" || { echo '::error::Change already exists'; exit 1; }
+  openspec new change "$CHANGE_ID" --schema spec-driven
+  {
+    printf 'Plan a spec-driven change in repository %s. Read AGENTS.md if present, the task file, product specifications, and OpenSpec instructions.\n' "$GITHUB_REPOSITORY"
+    printf 'Use openspec status --change %s and openspec instructions for proposal, design, specs, tasks.\n' "$CHANGE_ID"
+    printf 'Create proposal.md, design.md, specs/<capability>/spec.md and tasks.md with observable scenarios.\n'
+    printf 'Change ID: %s\nTask: %s\n' "$CHANGE_ID" "$TASK_ID"
+    cat .asf/agentkit/openspec-checklist.md
+    cat "$task_file"
+    printf '\nDo not edit product code, workflows, configuration, backlog, AGENTS.md, commit, push, publish or archive.\n'
+  } > "$RUNNER_TEMP/agentkit-prompt.txt"
+  opencode run --auto --model "$OPENCODE_MODEL" "$(cat "$RUNNER_TEMP/agentkit-prompt.txt")"
+  for artifact in proposal.md design.md tasks.md; do test -s "$change/$artifact"; done
+  find "$change/specs" -type f -name spec.md -size +0c | grep -q .
+  openspec validate "$CHANGE_ID" --strict --no-interactive
+  node "$RUNNER_TEMP/checklist.mjs" "$change/tasks.md"
+  npm run @@CHECKSCRIPT@@
+elif [[ "$PHASE" == apply ]]; then
+  test -s "$change/tasks.md"
+  openspec validate "$CHANGE_ID" --strict --no-interactive
+  node "$RUNNER_TEMP/checklist.mjs" "$change/tasks.md"
+  {
+    printf 'Implement ONLY the reviewed OpenSpec change %s for task %s.\n' "$CHANGE_ID" "$TASK_ID"
+    printf 'Read AGENTS.md if present, task, proposal, design and delta specs; run openspec instructions apply --change %s.\n' "$CHANGE_ID"
+    cat .asf/agentkit/openspec-checklist.md
+    printf 'Write implementation and deterministic tests. Run npm run @@CHECKSCRIPT@@; mark [x] only verified tasks.\n'
+    printf 'Do not modify reviewed proposal/design/delta specs, workflow, agentkit runtime, backlog, credentials or AGENTS.md.\n'
+    printf 'Do not sync, archive, commit or publish: the trusted workflow does that.\n'
+    cat "$task_file"
+  } > "$RUNNER_TEMP/agentkit-prompt.txt"
+  opencode run --auto --model "$OPENCODE_MODEL" "$(cat "$RUNNER_TEMP/agentkit-prompt.txt")"
+  node "$RUNNER_TEMP/checklist.mjs" "$change/tasks.md"
+  grep -Eq '^[[:space:]]*-[[:space:]]+\[[xX]\]' "$change/tasks.md"
+  if grep -Eq '^[[:space:]]*-[[:space:]]+\[[[:space:]]\]' "$change/tasks.md"; then
+    echo '::error::Unchecked implementation tasks remain'; exit 1
+  fi
+  npm run @@CHECKSCRIPT@@
+  openspec validate "$CHANGE_ID" --strict --no-interactive
+else
+  test -s "$change/tasks.md"
+  node "$RUNNER_TEMP/checklist.mjs" "$change/tasks.md"
+  grep -Eq '^[[:space:]]*-[[:space:]]+\[[xX]\]' "$change/tasks.md"
+  if grep -Eq '^[[:space:]]*-[[:space:]]+\[[[:space:]]\]' "$change/tasks.md"; then
+    echo '::error::Incomplete checklist'; exit 1
+  fi
+  npm run @@CHECKSCRIPT@@
+  openspec validate "$CHANGE_ID" --strict --no-interactive
+  cat .asf/agentkit/opsx-sync-quality.md >> .opencode/commands/opsx-sync.md
+  opencode run --auto --model "$OPENCODE_MODEL" --command opsx-sync "$CHANGE_ID"
+  openspec validate --all --strict --no-interactive
+  openspec archive "$CHANGE_ID" --yes --skip-specs
+  openspec validate --all --strict --no-interactive
+  openspec validate --archived --strict --no-interactive
+fi

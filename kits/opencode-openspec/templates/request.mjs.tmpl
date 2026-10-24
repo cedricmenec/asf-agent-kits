@@ -1,0 +1,71 @@
+// Port of ThreadStep's normalize-task-id.mjs without TS/main assumptions.
+// This file is executed from the protected default branch, before any agent work.
+import { appendFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+
+export const config = Object.freeze({
+  repository: '@@TARGETREPOSITORY@@', defaultBranch: '@@DEFAULTBRANCH@@',
+  prefix: '@@TASKPREFIX@@', directory: '@@TASKDIRECTORY@@',
+  checkScript: '@@CHECKSCRIPT@@', mutex: '@@MUTEXGROUP@@',
+});
+export const models = Object.freeze([
+  'openrouter/deepseek/deepseek-v4.1-flash',
+  'openrouter/deepseek/deepseek-v4.1-flash-1017',
+  'openrouter/z-ai/glm-5.3-flash',
+]);
+
+export function normalizeTask(raw) {
+  if (typeof raw !== 'string') throw Error('Task ID must be text');
+  const escaped = config.prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const canonical = new RegExp(`^${escaped}-(?!000)[0-9]{3}$`);
+  const input = raw.trim();
+  if (canonical.test(input)) return input;
+  if (/^[0-9]{1,3}$/.test(input) && /[1-9]/.test(input)) {
+    return `${config.prefix}-${input.padStart(3, '0')}`;
+  }
+  throw Error(`Invalid task ID: 1-999 or ${config.prefix}-NNN`);
+}
+
+export function checkRequest(env) {
+  if (env.GITHUB_REPOSITORY !== config.repository ||
+      env.GITHUB_ACTOR !== env.GITHUB_REPOSITORY_OWNER ||
+      env.GITHUB_REF !== `refs/heads/${config.defaultBranch}` ||
+      env.GITHUB_EVENT_NAME !== 'workflow_dispatch' ||
+      env.GITHUB_RUN_ATTEMPT !== '1') {
+    throw Error('Owner-only, default-branch, first-attempt manual dispatch required');
+  }
+  if (!['plan', 'apply', 'finalize'].includes(env.PHASE)) throw Error('Unsupported phase');
+  if (env.PAID_APPROVAL !== 'I_AUTHORIZE_ONE_PAID_PHASE') {
+    throw Error('Explicit one-phase paid approval is missing');
+  }
+  if (!models.includes(env.OPENCODE_MODEL)) throw Error('Model not on fixed allowlist');
+  const taskId = normalizeTask(env.RAW_TASK_ID);
+  const taskPath = `${config.directory}/${taskId}.md`;
+  if (!existsSync(taskPath)) throw Error('Task file not found: ' + taskPath);
+  if (!existsSync('openspec/config.yaml')) throw Error('Target OpenSpec config is missing');
+  const branch = `agent/openspec/${taskId}`;
+  const ref = `refs/heads/${branch}`;
+  const branchObservation = execFileSync('git', ['ls-remote', '--heads', 'origin', ref],
+    { encoding: 'utf8', timeout: 20000 }).trim();
+  const tip = branchObservation ? branchObservation.split('\t')[0] : '';
+  if (tip && !/^[0-9a-f]{40}$/.test(tip)) throw Error('Malformed branch observation');
+  if (!tip && env.PHASE !== 'plan') throw Error('Existing plan branch required');
+  if (tip && env.PHASE === 'plan') throw Error('Plan branch exists; review it before a new paid run');
+  return { taskId, taskPath, branch, change: taskId.toLowerCase(),
+    observedTip: tip || 'absent' };
+}
+
+if (process.argv[1]?.endsWith('/request.mjs')) {
+  try {
+    const request = checkRequest(process.env);
+    const output = process.env.GITHUB_OUTPUT;
+    if (!output) throw Error('GITHUB_OUTPUT is missing');
+    for (const [key, value] of Object.entries(request)) {
+      appendFileSync(output, `${key}=${value}\n`);
+    }
+    console.log(`Authorized request ${request.taskId}: ${process.env.PHASE}; branch observed.`);
+  } catch (error) {
+    console.error('::error::' + error.message);
+    process.exitCode = 1;
+  }
+}
