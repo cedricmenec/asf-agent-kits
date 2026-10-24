@@ -40,8 +40,13 @@ Commands:
   local-source lock, never promote the lock into remote provenance proof.
 - `doctor --repo … --checkout … [--config …]`: read-only local prerequisites,
   required variable/secret **names**, manual admin steps. GitHub App,
-  ruleset and secret presence are explicitly `unknown-not-queried` in this
-  first local-only increment.
+  ruleset and secret presence are `unknown-not-queried` by default.
+  With explicit `--github-read --github-token-env GITHUB_TOKEN --config …`,
+  only allowlisted GitHub REST GET endpoints are consulted. The doctor reports
+  presence/absence of variable and secret **names** when a complete authorized
+  page is available, never values. HTTP 403/404, network errors and truncated
+  results remain `unknown`. Branch, checks and ruleset summaries are
+  observations, **not proof of effective protection or permission to merge**.
 - `upgrade --dry-run`: compare a higher exact SemVer Git commit with the
   installed lock. It blocks modified overlays, existing unmanaged paths and
   removals. Actual upgrade writes remain a separate, reviewed #90 step.
@@ -73,6 +78,7 @@ despite local source edits. No remote push, App, OpenRouter, OpenSpec or model.
 Before #89 can be marked complete: review the installation semantics and
 source trust contract, confirm CI on the exact SHA, and decide how the first
 trusted SemVer release is published. #90 then adds **explicit** GitHub draft
-PR publication and read-only remote setup diagnostics, with their own
-permissions/approval gates. #91 covers a second repository, real OpenSpec
-runtime acceptance and an owner-approved paid pilot.
+PR publication with separate write permissions/approval gates, building on
+the optional read-only setup diagnostics introduced here. #91 covers a
+second repository, real OpenSpec runtime acceptance and an owner-approved
+paid pilot.

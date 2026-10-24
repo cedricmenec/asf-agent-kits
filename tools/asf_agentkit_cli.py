@@ -19,6 +19,7 @@ from pathlib import Path
 
 from render_mvp_kit import FILES, TEMPLATES, RenderError, checked_config, render_mvp
 from render_templates import unique_pairs
+from asf_agentkit_github_read import GitHubReader, remote_doctor
 
 LOCK_PATH = ".asf/agentkit.lock.json"
 REPO = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
@@ -422,6 +423,10 @@ def main(argv=None):
                 cmd.add_argument("--expected-head")
         elif name == "doctor":
             cmd.add_argument("--config")
+            cmd.add_argument("--github-read", action="store_true",
+                             help="Explicit optional GET-only GitHub diagnostics")
+            cmd.add_argument("--github-token-env", default="GITHUB_TOKEN",
+                             help="Name of existing token environment variable (never its value)")
     args = parser.parse_args(argv)
     try:
         target = checkout(args.checkout, args.repo)
@@ -438,6 +443,15 @@ def main(argv=None):
             report = status(target, args.repo)
         elif args.command == "doctor":
             report = doctor(target, args.repo, cfg)
+            if args.github_read:
+                if cfg is None:
+                    raise CliError("--github-read requires an exact --config")
+                if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", args.github_token_env):
+                    raise CliError("Invalid GitHub token variable name")
+                token = os.environ.get(args.github_token_env)
+                if not token:
+                    raise CliError("Requested GitHub read token is not configured")
+                report["githubRead"] = remote_doctor(args.repo, cfg, GitHubReader(args.repo, token))
         else:
             if args.command == "upgrade" and not args.dry_run:
                 raise CliError("Upgrade is currently dry-run only")
