@@ -22,6 +22,14 @@ candidate is now renderable and smoke-testable without payment using
 release, installation, activated workflow or live GitHub/App qualification.
 The local installer and doctor CLI still belong to #89.
 
+**AK-MVP-02 #89 candidate (stacked development branch):** a real local
+`bin/asf-agentkit` entry point now supports exact-commit Git source rendering,
+`install --dry-run`, explicit create-only branch apply, local `status`,
+`doctor` and `upgrade --dry-run`. See
+[CLI scope, commands and trust limits](docs/ak-mvp-02-cli.md). This remains a
+development candidate: no released distribution, remote PR publisher or
+effective GitHub admin setup has been qualified.
+
 - `schemas/`: provisional JSON Schema contracts for target configuration, installation lock, and release manifest.
 - `kits/`: historical metadata and synthetic examples plus the #88 **unqualified, uninstalled** workflow/runtime templates in `kits/opencode-openspec/templates/`.
 - `core/`: consultative manual policy, GitHub read gates and R3e-02 synthetic host preflight; none authenticates a real GitHub App or authorizes execution.

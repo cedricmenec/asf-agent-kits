@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+"""Run the CLI from an exact local catalogue checkout; no global install needed."""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+from asf_agentkit_cli import main
+
+sys.exit(main())
