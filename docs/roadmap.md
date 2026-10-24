@@ -15,12 +15,23 @@ CLIs do not validate a real provider run or live GitHub App writer. Next
 priority remains the #89 local install/doctor CLI with immutable source and
 collision/lock checks, not new R3h simulations.
 
-**#89 stacked candidate:** exact Git source-commit CLI prototype with strict
-local lock v2 (unattested development commit, not a release tag), deterministic
-install/upgrade dry-runs, source/target Git identity checks, create-only
-ordinary-branch application and read-only local doctor/status. Remote GitHub
-settings/secret presence remain unknown until #90's explicitly authorized
-doctor extension. No remote push, App secret, model or production activation.
+**#89 draft PR #94:** exact Git source-commit CLI with strict local lock v2
+(unattested development commit, not a release tag), deterministic install/upgrade
+dry-runs, source/target Git identity checks, create-only ordinary-branch
+application and read-only doctor/status. Optional explicit GitHub GET-only
+diagnostics report only secret/variable names and unknown when permissions or
+pagination prevent a conclusion. PR #94 is now based on merged #93/main;
+no App secret, model or production activation.
+
+**#90 controlled publication candidate:** `install --pr` requires a confirmed
+SHA-256 plan covering source, config and rendered bytes, exact clean target
+base/head SHA, a fresh ordinary branch, pinned expected App ID and a separately
+supplied App JWT. The code mints a one-repository token limited to Contents/PR
+write and creates only a **draft** PR via fixed GitHub endpoints, with remote
+tree collision guards and exact-ref checks. Current tests are all mocked;
+no real target write or effective App permission has yet been qualified. See
+[`docs/ak-mvp-03-controlled-pr.md`](ak-mvp-03-controlled-pr.md). #91 still
+requires a separately approved target qualification and any paid pilot.
 
 - **R0, scaffold**: project structure, provisional JSON schemas, ADR, kit descriptors and offline tests. This folder is the initial artifact.
 - **R1, contract validation**: formal Draft 2020-12 validator + positive/negative fixtures; GitHub CI with pinned actionlint, tested at the exact PR SHA; no payments. (Integrated on main; SHA-exact CI green.)
