@@ -5,6 +5,7 @@ ordinary branch and draft PR; it never edits settings, secrets, workflows in
 place, an existing branch, or the configured default branch.
 """
 import base64
+import hashlib
 import json
 import re
 import urllib.error
@@ -216,10 +217,16 @@ def publish_draft(writer, repository, base_branch, expected_sha, new_branch,
     try:
         lock = json.loads(lock_bytes)
         source_sha = lock["sourceCommitSha"]
-        if not SHA.fullmatch(source_sha):
+        hashes = lock["managedFiles"]
+        if (not isinstance(source_sha, str) or not SHA.fullmatch(source_sha) or
+                lock.get("targetRepository") != repository or
+                lock.get("sourceTrust") != "user-pinned-git-object-unattested" or
+                not isinstance(hashes, dict) or set(hashes) != set(files) or
+                any(hashes[path] != hashlib.sha256(content).hexdigest()
+                    for path, content in files.items())):
             raise ValueError("Invalid pinned source SHA")
     except (ValueError, KeyError, TypeError):
-        raise PublishRefused("Invalid locked source identity") from None
+        raise PublishRefused("Invalid source lock or managed file bytes") from None
     all_files = dict(files)
     all_files[LOCK_PATH] = lock_bytes
     elements = []

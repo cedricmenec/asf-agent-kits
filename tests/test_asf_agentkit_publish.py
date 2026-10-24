@@ -1,5 +1,5 @@
 """Offline GitHub-API publication fixtures: no network, token or PR writes."""
-import io
+import hashlib
 import json
 import sys
 import unittest
@@ -9,7 +9,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 from asf_agentkit_github_read import ReadUnavailable
-from asf_agentkit_cli import ALLOWED, canonical, digest
+from asf_agentkit_cli import ALLOWED
 from asf_agentkit_publish import (GitHubAppIssuer, GitHubDraftWriter, PublishRefused,
                                   mint_target_writer,
                                   publish_draft, remote_tree_is_create_only)
@@ -20,7 +20,11 @@ NEW = '3' * 40
 BRANCH = 'asf-agentkit/install-qualification-a'
 REPO = 'example/qualification-repository'
 FILES = {path: b'fixture bytes\n' for path in ALLOWED}
-LOCK = json.dumps({'sourceCommitSha': '4' * 40}).encode()
+LOCK = json.dumps({'sourceCommitSha': '4' * 40,
+                   'targetRepository': REPO,
+                   'sourceTrust': 'user-pinned-git-object-unattested',
+                   'managedFiles': {path: hashlib.sha256(content).hexdigest()
+                                    for path, content in FILES.items()}}).encode()
 PLAN = '5' * 64
 
 
@@ -110,6 +114,16 @@ class PublishTests(unittest.TestCase):
         with self.assertRaisesRegex(PublishRefused, 'digest differs'):
             publish_draft(writer, REPO, 'main', BASE, BRANCH,
                           '9' * 64, PLAN, FILES, LOCK)
+        self.assertEqual(writer.requests, [])
+
+    def test_lock_must_bind_every_published_byte_before_any_api_operation(self):
+        writer = FakeWriter()
+        tampered = dict(FILES)
+        path = next(iter(tampered))
+        tampered[path] = b'altered without a new approved lock'
+        with self.assertRaisesRegex(PublishRefused, 'Invalid source lock or managed file bytes'):
+            publish_draft(writer, REPO, 'main', BASE, BRANCH,
+                          PLAN, PLAN, tampered, LOCK)
         self.assertEqual(writer.requests, [])
 
     def test_denied_token_scope_is_closed_no_post(self):
