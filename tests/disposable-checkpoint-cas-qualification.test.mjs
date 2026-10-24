@@ -106,7 +106,7 @@ test('reject arbitrary fault string and malformed chain before FS I/O',()=>{
   assert.deepEqual(roots(),before);
 });
 test('reject an accessor before it is evaluated',()=>{
-  const before=roots(),chain=entries();let called=false;
+  const before=roots(),chain=JSON.parse(JSON.stringify(entries()));let called=false;
   Object.defineProperty(chain[0].event,'phase',{get(){called=true;return 'plan';}});
   assert.throws(()=>qualifyDisposableCheckpointCas(policy(),chain,
     observation(entries()),'demo-paid'),denied);
