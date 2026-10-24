@@ -1,5 +1,9 @@
 # Agent execution contract for the catalogue
 
+## Active product mission: ship the installable kit first
+
+The 2026-10-24 owner decision prioritizes [docs/mvp-installation-scope.md](docs/mvp-installation-scope.md): extract a **real** manual OpenCode+OpenSpec executor from ThreadStep, deliver a versioned install/doctor CLI and safe draft PR workflow, then qualify a **second** repository and a version upgrade (issues #88–#91). Keep previously completed R0–R7 research, tests and security guarantees; additional local CAS/identity simulation is **not** the delivery critical path. ASF V3 global orchestration/CAS belongs to ThreadStep issue #196, not this first portable kit. Never weaken action-specific approvals or treat mock status as production readiness.
+
 This repository develops **ASF Agent Kits**, not the ThreadStep product. Always inspect the current GitHub refs, open PRs, checks, and these docs before changing anything.
 
 ## Allowed without additional approvals

@@ -1,5 +1,9 @@
 # Implementation milestones
 
+## ACTIVE MVP DELIVERY ORDER (decision 24 October 2026)
+
+**The R0–R7 bullets below are preserved *historical evidence*, not the MVP's critical path.** [Installation-first scope, explicit MVP acceptance and ASF V3 reuse decisions](mvp-installation-scope.md) and [living Notion roadmap](https://app.notion.com/p/40112ac91636818dab99de3813963c0c) supersede their ordering. Prioritize [#88 real portable ThreadStep OpenCode+OpenSpec kit](https://github.com/cedricmenec/asf-agent-kits/issues/88) → [#89 working install/status/doctor CLI](https://github.com/cedricmenec/asf-agent-kits/issues/89) → [#90 safe draft PR/setup](https://github.com/cedricmenec/asf-agent-kits/issues/90) → [#91 E2E on another approved repository and version upgrade](https://github.com/cedricmenec/asf-agent-kits/issues/91). Existing tools are previews, **not** an executable release. Preserve previous R3h/CAS/tests; do not extend them by default. Do not import local CAS into V3 unreviewed; reuse assessment is [ThreadStep #196](https://github.com/cedricmenec/threadstep/issues/196). Correct the current R2d confinement to `.asf/agentkit/` **explicitly and safely** before generating real `.github/workflows/` files. Admin, paid model, protected Git refs and release permissions remain gated.
+
 This is a dependency plan, **not** proof of completed runtime implementation.
 
 - **R0, scaffold**: project structure, provisional JSON schemas, ADR, kit descriptors and offline tests. This folder is the initial artifact.
