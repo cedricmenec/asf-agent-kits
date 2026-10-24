@@ -126,7 +126,7 @@ test('no skip, auto phase, finalize without apply, or further paid phase',()=>{
 });
 for(const [name,change] of [
   ['head changed',o=>o.headSha=D],
-  ['parent changed',o=>o.parentSha=A],
+  ['parent changed',o=>o.parentSha=C],
   ['journal changed',o=>o.journalDigest='f'.repeat(64)],
   ['wrong repository',o=>o.repository='malicious/repo'],
   ['branch moved',o=>o.branch='agent/openspec/TS-999'],
