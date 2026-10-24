@@ -6,6 +6,7 @@ execute successfully. This proves routing and fail-closed filesystem behavior.
 import base64
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -23,6 +24,8 @@ name=Path(sys.argv[0]).name
 args=sys.argv[1:]
 with open(os.environ['MOCK_LOG'], 'a') as out:
     out.write(name+' '+(' '.join(args[:4]))+'\\n')
+if os.environ.get('REQUIRE_ESBUILD') == '1' and not Path('node_modules/esbuild/package.json').is_file():
+    sys.exit(91)
 change=Path('openspec/changes/ts-009')
 if name == 'npm':
     sys.exit(0)
@@ -70,6 +73,80 @@ def command(cwd, *args, env=None):
 
 
 class NonPayingPhaseFixture(unittest.TestCase):
+    def test_node22_clean_phase_runners_bootstrap_dev_esbuild_before_each_check(self):
+        # Unlike the cheap phase-routing fixture, npm is REAL here. Only the
+        # OpenSpec and OpenCode/provider executables are mocked, so a missing
+        # project npm ci or omitted devDependency fails deterministically.
+        version = command(ROOT, 'node', '--version').stdout.strip()
+        if not version.startswith('v22.'):
+            if os.environ.get('CI', '').lower() == 'true':
+                self.fail('AgentKit dependency qualification CI must run on Node 22')
+            self.skipTest('Real fresh npm regression is qualified on pinned Node 22 CI')
+        cfg = json.loads((ROOT/'kits/opencode-openspec/mvp-config.example.json').read_text())
+        preview = render_mvp(ROOT, cfg)
+        shell = base64.b64decode(next(f['contentBase64'] for f in preview['files']
+            if f['path'] == '.asf/agentkit/runtime/phase.sh')).decode()
+        install = shell.index('npm ci --ignore-scripts')
+        self.assertLess(install, shell.index('if [[ "$PHASE" == plan ]]'))
+        self.assertLess(install, shell.index('openspec init --tools'))
+        self.assertEqual(shell.count('npm ci --ignore-scripts'), 1)
+        self.assertEqual(shell.count('npm run check'), 4)  # apply prompt + 3 actual phases
+
+        with tempfile.TemporaryDirectory(prefix='mvp-node22-deps-') as tmp:
+            target = Path(tmp)/'target'
+            target.mkdir()
+            for item in preview['files']:
+                path = target/item['path']
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(base64.b64decode(item['contentBase64']))
+            fixture = ROOT/'tests/fixtures/node22-esbuild'
+            for name in ('package.json', 'package-lock.json', 'check-esbuild.mjs'):
+                shutil.copyfile(fixture/name, target/name)
+            (target/'openspec').mkdir()
+            (target/'openspec/config.yaml').write_text('schema: spec-driven\n')
+            task = target/'backlog/tasks/TS-009.md'
+            task.parent.mkdir(parents=True)
+            task.write_text('# Task 009\nBuild a safe feature.\n')
+            command(target, 'git', 'init', '-q')
+            (target/'.git/info/exclude').write_text('/node_modules/\n')
+            command(target, 'git', 'add', '.')
+            command(target, 'git', '-c', 'user.name=Fixture',
+                    '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'baseline')
+            bin_dir = Path(tmp)/'mock-bin'
+            bin_dir.mkdir()
+            for name in ('openspec', 'opencode'):
+                file = bin_dir/name
+                file.write_text(FAKE_BIN)
+                file.chmod(0o700)
+            runtime = target/'.asf/agentkit/runtime'
+            (Path(tmp)/'checklist.mjs').write_bytes((runtime/'checklist.mjs').read_bytes())
+            env = dict(os.environ, PATH=str(bin_dir) + os.pathsep + os.environ['PATH'],
+                RUNNER_TEMP=str(tmp), MOCK_LOG=str(Path(tmp)/'calls.log'),
+                REQUIRE_ESBUILD='1', GITHUB_REPOSITORY=cfg['targetRepository'],
+                TASK_ID='TS-009', CHANGE_ID='ts-009',
+                OPENCODE_MODEL='model-is-never-called')
+            for key in ('OPENROUTER_API_KEY', 'NODE_ENV', 'npm_config_omit', 'NPM_CONFIG_OMIT'):
+                env.pop(key, None)
+            for phase in ('plan', 'apply', 'finalize'):
+                # Simulate a fresh Node 22 Actions runner on each phase:
+                # keep only tracked project bytes/checkpoints, no node_modules.
+                self.assertFalse((target/'node_modules').exists(), phase)
+                env['PHASE'] = phase
+                result = command(target, 'bash', str(runtime/'phase.sh'), env=env)
+                self.assertIn('AgentKit Node 22 project check: esbuild available', result.stdout)
+                self.assertTrue((target/'node_modules/esbuild/package.json').is_file())
+                self.assertTrue((target/'node_modules/@esbuild').is_dir())
+                self.assertEqual(command(target, 'git', 'diff', '--',
+                    'package.json', 'package-lock.json').stdout.strip(), '')
+                command(target, 'git', 'add', '-A')
+                command(target, 'git', '-c', 'user.name=Fixture',
+                        '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', phase)
+                shutil.rmtree(target/'node_modules')
+            calls = (Path(tmp)/'calls.log').read_text()
+            self.assertEqual(calls.count('opencode run'), 3)
+            self.assertEqual(calls.count('openspec init'), 3)
+            self.assertTrue((target/'openspec/changes/archive/2026-10-24-ts-009/tasks.md').is_file())
+
     def test_plan_apply_finalize_and_protected_scope(self):
         cfg = json.loads((ROOT/'kits/opencode-openspec/mvp-config.example.json').read_text())
         preview = render_mvp(ROOT, cfg)

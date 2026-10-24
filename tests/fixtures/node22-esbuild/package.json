@@ -1,0 +1,12 @@
+{
+  "name": "asf-agentkit-node22-project-check-fixture",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node check-esbuild.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10"
+  }
+}
