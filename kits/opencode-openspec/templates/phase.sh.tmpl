@@ -15,8 +15,10 @@ npm ci --ignore-scripts
 openspec init --tools opencode,agents
 test -s .opencode/commands/opsx-sync.md
 test -s .opencode/skills/openspec-sync-specs/SKILL.md
-# These generated local instructions must not enter the commit/PR.
-printf '\n/.opencode/\n/.agents/\n' >> .git/info/exclude
+# Generated local instructions and OpenSpec's own empty-directory markers
+# must not enter an agent commit/PR. Ignore only the two known placeholders,
+# never the archive/spec directories or any other user/model output.
+printf '\n/.opencode/\n/.agents/\n/openspec/changes/archive/.gitkeep\n/openspec/specs/.gitkeep\n' >> .git/info/exclude
 
 if [[ "$PHASE" == plan ]]; then
   test ! -d "$change" || { echo '::error::Change already exists'; exit 1; }

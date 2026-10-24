@@ -32,7 +32,9 @@ if name == 'npm':
 if name == 'openspec':
     if args[:1] == ['init']:
         for file in ('.opencode/commands/opsx-sync.md',
-                     '.opencode/skills/openspec-sync-specs/SKILL.md'):
+                     '.opencode/skills/openspec-sync-specs/SKILL.md',
+                     'openspec/changes/archive/.gitkeep',
+                     'openspec/specs/.gitkeep'):
             path=Path(file);path.parent.mkdir(parents=True,exist_ok=True)
             path.write_text('generated\\n')
     elif args[:2] == ['new','change']:
@@ -138,7 +140,16 @@ class NonPayingPhaseFixture(unittest.TestCase):
                 self.assertTrue((target/'node_modules/@esbuild').is_dir())
                 self.assertEqual(command(target, 'git', 'diff', '--',
                     'package.json', 'package-lock.json').stdout.strip(), '')
+                for placeholder in ('openspec/changes/archive/.gitkeep',
+                                    'openspec/specs/.gitkeep'):
+                    self.assertTrue((target/placeholder).is_file())
+                    self.assertEqual(command(target, 'git', 'check-ignore',
+                        placeholder).stdout.strip(), placeholder)
+                self.assertNotEqual(subprocess.run(['git', 'check-ignore', '-q',
+                    'openspec/changes/archive/unrelated.md'], cwd=target).returncode, 0)
                 command(target, 'git', 'add', '-A')
+                command(target, 'node', str(runtime/'scope.mjs'),
+                        'staged', phase, 'ts-009', env=env)
                 command(target, 'git', '-c', 'user.name=Fixture',
                         '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', phase)
                 shutil.rmtree(target/'node_modules')
