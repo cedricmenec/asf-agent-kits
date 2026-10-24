@@ -129,6 +129,8 @@ export function qualifyDisposableCheckpointCas(
   try {
     if(typeof fault!=='string'||!faults.has(fault)||
        !Array.isArray(entries)||entries.length!==2)deny();
+    // Validate descriptors before JSON serialization can invoke getters.
+    snapshot(policy,entries,observed,expectedMutexGroup);
     const current=JSON.parse(JSON.stringify(entries));
     const final=snapshot(policy,current,observed,expectedMutexGroup);
     const planned=current.slice(0,1);
