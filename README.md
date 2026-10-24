@@ -15,12 +15,12 @@ The executable shared core, trusted release publication, installer, upgrade/roll
 
 ## Current development contents
 
-**AK-MVP-01 #88 / draft PR #93:** A real manual OpenCode+OpenSpec template
-candidate is now renderable and smoke-testable without payment using
+**AK-MVP-01 #88 / merged PR #93:** A real manual OpenCode+OpenSpec template
+candidate is renderable and smoke-testable without payment using
 [`tools/render_mvp_kit.py`](tools/render_mvp_kit.py) and
 [the extraction audit](docs/ak-mvp-01-extraction.md). This is not a trusted
 release, installation, activated workflow or live GitHub/App qualification.
-The local installer and doctor CLI still belong to #89.
+The TS-059/Node 22 devDependency regression is covered in CI.
 
 **AK-MVP-02 #89 candidate (stacked development branch):** a real local
 `bin/asf-agentkit` entry point now supports exact-commit Git source rendering,
@@ -29,6 +29,13 @@ The local installer and doctor CLI still belong to #89.
 [CLI scope, commands and trust limits](docs/ak-mvp-02-cli.md). This remains a
 development candidate: no released distribution, remote PR publisher or
 effective GitHub admin setup has been qualified.
+
+**AK-MVP-03 #90 candidate:** explicit digest-confirmed `install --pr` with
+an allowlisted GitHub App JWT/token path, one-repo token scope, exact base SHA,
+create-only Git data writes, new ordinary branch and **draft PR only**.
+See [controlled PR publication and approval boundaries](docs/ak-mvp-03-controlled-pr.md).
+All remote publication tests so far are mocks; no target repository has been
+modified or product workflow activated by this candidate.
 
 - `schemas/`: provisional JSON Schema contracts for target configuration, installation lock, and release manifest.
 - `kits/`: historical metadata and synthetic examples plus the #88 **unqualified, uninstalled** workflow/runtime templates in `kits/opencode-openspec/templates/`.

@@ -1,3 +1,5 @@
+import contextlib
+import io
 import json
 import os
 import shutil
@@ -6,11 +8,12 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'tools'))
 from asf_agentkit_cli import (CliError, LOCK_PATH, origin, safe_member,
-                              read_lock, observed)
+                              read_lock, observed, main)
 from render_mvp_kit import FILES
 
 
@@ -179,6 +182,36 @@ class CliLocalCheckout(unittest.TestCase):
         lock.parent.mkdir()
         lock.write_text('{"schemaVersion":1,"kits":[]}')
         self.cli('status', self.baseargs[:4], expected=3)
+
+    def test_explicit_pr_requires_exact_reviewed_plan_and_app_jwt(self):
+        dry = self.cli('install', self.baseargs + ['--dry-run'])
+        self.assertEqual(len(dry['planSha256']), 64)
+        args = self.baseargs + [
+            '--pr', '--base-branch', 'main', '--new-branch', 'asf-agentkit/install-a',
+            '--expected-base-sha', self.default_sha,
+            '--expected-plan-sha', dry['planSha256'], '--expected-app-id', '12345']
+        with patch.dict(os.environ, {'GITHUB_APP_JWT': ''}):
+            self.cli('install', args, expected=3)
+        bad_plan = args.copy()
+        bad_plan[bad_plan.index('--expected-plan-sha')+1] = '0' * 64
+        with patch.dict(os.environ, {'GITHUB_APP_JWT': 'FAKE_JWT'}):
+            self.cli('install', bad_plan, expected=3)
+            with patch('asf_agentkit_cli.mint_target_writer', return_value='FAKE_WRITER') as mint, \
+                 patch('asf_agentkit_cli.publish_draft', return_value={'status': 'draft-pr-created'}) as publisher:
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out):
+                    self.assertEqual(main(['install'] + args), 0)
+                self.assertEqual(json.loads(out.getvalue())['status'], 'draft-pr-created')
+                self.assertEqual(mint.call_args.args[1:], ('example/qualification-repository', 12345))
+                self.assertEqual(publisher.call_args.args[0], 'FAKE_WRITER')
+        self.assertEqual(cmd(self.target, 'git', 'status', '--porcelain'), '')
+        cfg = json.loads(self.config.read_text())
+        cfg['appIdVar'] = 'REVIEWED_DIFFERENT_APP_ID'
+        self.config.write_text(json.dumps(cfg))
+        changed = self.cli('install', self.baseargs + ['--dry-run'])
+        self.assertNotEqual(dry['planSha256'], changed['planSha256'],
+                            'A changed rendered workflow/config needs a new explicit approval')
+        self.assertNotEqual(dry['configurationSha256'], changed['configurationSha256'])
 
 
 class Helpers(unittest.TestCase):

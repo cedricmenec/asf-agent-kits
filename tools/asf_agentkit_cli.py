@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """AK-MVP-02 local, pinned-source, non-destructive CLI.
 
-This implements local read-only install/upgrade plans, status and doctor;
-create-only local branch application is deliberately explicit. Remote PR
-publication and authenticated GitHub setup remain AK-MVP-03.
+This implements pinned install/upgrade plans, status and doctor, create-only
+local branch application, and an explicit App-authenticated draft PR path.
 """
 import argparse
 import base64
@@ -20,6 +19,7 @@ from pathlib import Path
 from render_mvp_kit import FILES, TEMPLATES, RenderError, checked_config, render_mvp
 from render_templates import unique_pairs
 from asf_agentkit_github_read import GitHubReader, remote_doctor
+from asf_agentkit_publish import BRANCH, GitHubAppIssuer, PublishRefused, mint_target_writer, publish_draft
 
 LOCK_PATH = ".asf/agentkit.lock.json"
 REPO = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
@@ -421,6 +421,14 @@ def main(argv=None):
             if name == "install":
                 cmd.add_argument("--apply", action="store_true")
                 cmd.add_argument("--expected-head")
+                cmd.add_argument("--pr", action="store_true",
+                                 help="Explicit App-authenticated create-only draft PR")
+                cmd.add_argument("--base-branch")
+                cmd.add_argument("--new-branch")
+                cmd.add_argument("--expected-base-sha")
+                cmd.add_argument("--expected-plan-sha")
+                cmd.add_argument("--expected-app-id", type=int)
+                cmd.add_argument("--github-app-jwt-env", default="GITHUB_APP_JWT")
         elif name == "doctor":
             cmd.add_argument("--config")
             cmd.add_argument("--github-read", action="store_true",
@@ -455,23 +463,56 @@ def main(argv=None):
         else:
             if args.command == "upgrade" and not args.dry_run:
                 raise CliError("Upgrade is currently dry-run only")
-            if args.command == "install" and args.apply and args.dry_run:
-                raise CliError("Choose either --apply or --dry-run")
+            if args.command == "install" and sum((args.apply, args.dry_run, args.pr)) != 1:
+                raise CliError("Choose exactly one of --apply, --dry-run or --pr")
             if Path(args.source).absolute() == target:
                 raise CliError("Source and target checkouts must differ")
             files = rendered_source(args.source, args.source_commit, args.version, cfg)
             new_lock = desired_lock(files, cfg, args.version, args.source_commit)
             old_lock = read_lock(target)
             report = plan(target, cfg, files, old_lock, new_lock, args.command)
+            # Stable digest binds target/config/source and the exact set of
+            # proposed file BYTES and create/update/conflict operations.
+            report["configurationSha256"] = new_lock["configurationSha256"]
+            report["managedFilesSha256"] = new_lock["managedFiles"]
+            report["lockSha256"] = digest(canonical(new_lock))
+            plan_sha = digest(canonical(report))
+            report["planSha256"] = plan_sha
             if args.command == "install" and args.apply:
                 count = create_only(target, files, new_lock, report,
                                     args.expected_head, cfg["defaultBranch"])
                 report["writesPerformed"] = True
                 report["createdFiles"] = count
                 report["status"] = "applied-locally-uncommitted"
+            elif args.command == "install" and args.pr:
+                if report["status"] != "proposed" or any(
+                        entry["action"] != "create" for entry in report["operations"]):
+                    raise CliError("Draft PR publication requires an entirely create-only plan")
+                if args.base_branch != cfg["defaultBranch"] or not SHA.fullmatch(args.expected_base_sha or ""):
+                    raise CliError("The approved base SHA and configured default branch are required")
+                if not BRANCH.fullmatch(args.new_branch or ""):
+                    raise CliError("New draft branch must follow asf-agentkit/install-* convention")
+                if not DIGEST.fullmatch(args.expected_plan_sha or "") or args.expected_plan_sha != plan_sha:
+                    raise CliError("Approved dry-run plan digest mismatch")
+                if type(args.expected_app_id) is not int or args.expected_app_id <= 0:
+                    raise CliError("Exact expected GitHub App ID required")
+                if git(target, "rev-parse", "HEAD").decode().strip() != args.expected_base_sha:
+                    raise CliError("Local target HEAD differs from approved remote base SHA")
+                if git(target, "status", "--porcelain", "--untracked-files=all"):
+                    raise CliError("Publishing requires an entirely clean target checkout")
+                if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", args.github_app_jwt_env):
+                    raise CliError("Invalid App JWT environment variable name")
+                app_jwt = os.environ.get(args.github_app_jwt_env)
+                if not app_jwt:
+                    raise CliError("Approved GitHub App JWT not configured")
+                report = publish_draft(
+                    mint_target_writer(GitHubAppIssuer(args.repo, app_jwt), args.repo,
+                                       args.expected_app_id), args.repo, args.base_branch,
+                    args.expected_base_sha, args.new_branch, args.expected_plan_sha,
+                    plan_sha, files, canonical(new_lock))
         print(json.dumps(report, sort_keys=True, indent=2))
         return 2 if report.get("status") == "blocked" else 0
-    except (CliError, RenderError, OSError, UnicodeError, ValueError, KeyError, TypeError) as exc:
+    except (CliError, RenderError, PublishRefused, OSError, UnicodeError, ValueError, KeyError, TypeError) as exc:
         print("ASF-AgentKit REFUSED: " + str(exc), file=sys.stderr)
         return 3
 
