@@ -1,6 +1,6 @@
 # ASF Agent Kits
 
-**Status (24 Oct 2026): offline R0/R1/R2a–R2d, R3a–R3e-02, R3f-01–04 and R3g-01–05 prototypes integrated on `main`; SEC-02a and SEC-02b-01 synthetic release checks, plus R5a-01/02/03, R5b-01 and R5b-02a read-only install/upgrade/PR publication previews and R3h-01/02/03 and R6a-01 offline handoff, versioned checkpoint-journal and disposable byte qualification integrated. NOT an installable, independently authenticated, attestable or released kit. Verify the latest refs/PRs/CI before relying on this dated status.**
+**Status (24 Oct 2026): offline R0/R1/R2a–R2d, R3a–R3e-02, R3f-01–04 and R3g-01–05 prototypes integrated on `main`; SEC-02a and SEC-02b-01 synthetic release checks, plus R5a-01/02/03, R5b-01 and R5b-02a read-only install/upgrade/PR publication previews and R3h-01/02/03/04 and R6a-01 offline handoff, versioned checkpoint-journal, disposable byte qualification and private Linux local CAS/lock fixtures integrated. NOT an installable, independently authenticated, attestable or released kit. Verify the latest refs/PRs/CI before relying on this dated status.**
 
 This repository is intended to publish independently versioned, portable, manually-triggered agent kits for GitHub repositories. Initially it specifies:
 
@@ -31,6 +31,7 @@ The executable shared core, trusted release publication, installer, upgrade/roll
 - `core/manual-phase-handoff-preview.mjs`: R3h-01 pure R3a/R3f manual phase/checkpoint handoff and simulated concurrency gate; no OpenCode or paid runner.
 - `core/checkpoint-journal-preview.mjs`: R3h-02 strict JSON journal chain for plan/apply/finalize with replay, SHA and scope refusal; no durable GitHub storage, no authority. See `docs/r3h02-checkpoint-journal.md`.
 - `core/disposable-checkpoint-journal-qualification.mjs`: R3h-03 exclusive 0600 journal byte write/read and fault injection **only inside an owned ephemeral Linux temp directory**; no target-repository writes or crash durability guarantee. See `docs/r3h03-disposable-byte-qualification.md`.
+- `core/disposable-checkpoint-cas-qualification.mjs`: R3h-04a private Linux filesystem-only CAS fixture, mkdir-exclusive lock, compare/version/digest, fsync+rename, interrupted write and negative tests. PR #84, `docs/r3h04-disposable-local-cas.md`. `tests/r3h04-live-interprocess-lock.test.mjs`: R3h-04b two live processes race for the local lock and check orphan refusal after SIGKILL; PR #85, `docs/r3h04b-live-interprocess-lock.md`. **No authenticated GitHub CAS, no real paid-job mutex or retry.**
 - `tools/preview_pr_publication.py`: R5b-02a synthetic target branch/SHA/check/concurrency publication preflight, never a real GitHub PR or authority.
 - `tools/qualify_local_installation_fixture.py`: R6a-01 disposable local target check composing read-only R5a/R5b previews and simulated publisher; not globally atomic or authenticated.
 - `tests/`: non-paid tests for the catalogue prototypes.
@@ -39,7 +40,7 @@ The executable shared core, trusted release publication, installer, upgrade/roll
 
 Run `npm run check` with Node.js 22+ and Python 3.12+ with the pinned dependencies in `requirements-contracts.txt` installed. The CI installs them and runs `actionlint` on GitHub Actions workflows. This command does not invoke GitHub Apps, OpenRouter, OpenCode or a paid model.
 
-See [docs/roadmap.md](docs/roadmap.md) for the updated R3f/R3g/R3h (including #77/#79)/SEC-02b/R5a/R5b/R6a evidence and remaining gates. The R5 previews do not grant actual repository installation or publishing authority. R3e-03 real host identity, SEC-02 tag/release provenance, R3 manual runtime, optional R4, safe PR installer R5, qualification R6 and owner-approved activation R7 remain unfinished. Integrating a simulated test cannot make an operational grant true.
+See [docs/roadmap.md](docs/roadmap.md) for the updated R3f/R3g/R3h (including #77/#79/#84/#85)/SEC-02b/R5a/R5b/R6a evidence and remaining gates. The R5 previews do not grant actual repository installation or publishing authority. R3e-03 real host identity, SEC-02 tag/release provenance, R3 manual runtime, optional R4, safe PR installer R5, qualification R6 and owner-approved activation R7 remain unfinished. Integrating a simulated test cannot make an operational grant true.
 
 ## Intended future repository-level installation
 
