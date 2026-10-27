@@ -2,8 +2,13 @@
 
 Cette recette décrit le **candidat de développement** `opencode-openspec@0.1.0`,
 épinglé au commit `3c0932d31234f48c6d8b644d2318e8bcab67bc99`.
-Ce n'est **pas une release signée**. La première exécution OpenCode réelle n'est
-pas encore qualifiée. Suivi : [issue #91](https://github.com/cedricmenec/asf-agent-kits/issues/91).
+Ce n'est **pas une release signée**. Le pilote OpenCode + OpenSpec a réussi
+les phases `plan` et `apply` : [PR #4](https://github.com/cedricmenec/asf-agentkit-qualification/pull/4)
+brouillon et [CI indépendante](https://github.com/cedricmenec/asf-agentkit-qualification/actions/runs/40437506108)
+verte sur le SHA `78c368a9f4860e583739a960d6890ba52ed0c8e1`.
+La publication CLI `install --pr` avec JWT réel, la phase `finalize`
+et la fusion restent non qualifiées. Suivi :
+[issue #91](https://github.com/cedricmenec/asf-agent-kits/issues/91).
 
 ## 1. Préparer un dépôt cible
 
@@ -78,14 +83,31 @@ utilisé le connecteur GitHub : `install --pr` avec vraie App/JWT reste à prouv
 
 ## 5. Première tâche OpenCode + OpenSpec, après autorisations
 
-Le workflow du kit est désormais présent sur `main`. Après contrôle de sa
-configuration effective et des variables/secrets par le propriétaire, et
-**uniquement après autorisation spécifique du coût**, déclencher manuellement
-la tâche synthétique `AQ-009`.
-Enchaîner `plan`, revue OpenSpec, `apply`, puis `finalize`, avec **une
-autorisation de dépense distincte pour chaque phase** et aucun retry payant
-automatique. Vérifier la branche, la PR brouillon, le check indépendant au
-**SHA exact** et les critères de la tâche avant toute fusion.
+Le workflow du kit est présent sur `main`. Après configuration de
+l'App, des secrets et du ruleset par le propriétaire, ouvrir
+[AgentKit OpenSpec (manual)](https://github.com/cedricmenec/asf-agentkit-qualification/actions/workflows/asf-agentkit-openspec.yml)
+dans GitHub Actions et sélectionner **Run workflow**, branche `main`.
+Pour ce pilote, les champs sont :
 
-**Frontière de réussite :** une CI verte sur la PR d'installation ne prouve
-ni une authentification GitHub App via JWT, ni une tâche réalisée par OpenCode.
+- `task_id` : `AQ-009` ;
+- `phase` : `plan` (puis `apply` après revue, `finalize` seulement après nouvel accord) ;
+- `model` : `openrouter/deepseek/deepseek-v4.1-flash-1017` ;
+- `paid_approval` : `I_AUTHORIZE_ONE_PAID_PHASE`, uniquement pour la phase
+  dont la dépense a été explicitement autorisée.
+
+**Un dispatch par phase, aucun retry payant automatique.** Ne jamais
+utiliser « Re-run jobs » sans nouvel accord. Vérifier le statut et la CI
+sur le SHA exact, puis conserver la PR en brouillon jusqu'à la revue.
+
+**Preuve obtenue le 27 octobre 2026 :**
+[plan #40436794279](https://github.com/cedricmenec/asf-agentkit-qualification/actions/runs/40436794279)
+et [apply #40437399230](https://github.com/cedricmenec/asf-agentkit-qualification/actions/runs/40437399230)
+réussis avec DeepSeek V4.1 Flash 1017. La GitHub App a publié la
+[branche et PR #4](https://github.com/cedricmenec/asf-agentkit-qualification/pull/4)
+brouillon. La [CI indépendante #40437506108](https://github.com/cedricmenec/asf-agentkit-qualification/actions/runs/40437506108)
+est verte sous Node 22, avec **6 tests réussis** et bundle esbuild valide,
+sur `78c368a9f4860e583739a960d6890ba52ed0c8e1`.
+
+Cette preuve couvre la tâche de développement réelle, **pas**
+la publication CLI `install --pr` via JWT réel, ni `finalize`,
+ni la fusion. Ces étapes conservent leurs gates distincts.
