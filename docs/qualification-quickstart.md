@@ -70,15 +70,18 @@ La présence de `APP_PRIVATE_KEY` dans les Secrets GitHub Actions **ne fournit
 pas automatiquement un JWT au terminal local**.
 
 Pour le banc de test, la [PR #2](https://github.com/cedricmenec/asf-agentkit-qualification/pull/2)
-existe déjà et sa CI est verte : **ne pas créer une PR en doublon et ne pas
-fusionner/activer #2 sans autorisation spécifique**. La publication par la
-vraie App/JWT reste à prouver, indépendamment de cette PR créée via connecteur.
+a été **fusionnée avec autorisation explicite** au commit
+`0abc166db3035486e84acc3f0412e7cb03424508`, et sa
+[CI post-fusion](https://github.com/cedricmenec/asf-agentkit-qualification/actions/runs/40431533508)
+est verte. **Ne pas créer une PR en doublon.** La publication initiale a
+utilisé le connecteur GitHub : `install --pr` avec vraie App/JWT reste à prouver.
 
 ## 5. Première tâche OpenCode + OpenSpec, après autorisations
 
-Après revue du workflow, fusion **explicitement autorisée** de la PR
-d'installation, contrôle de `main` et configuration propriétaire des
-variables/secrets, déclencher manuellement la tâche synthétique `AQ-009`.
+Le workflow du kit est désormais présent sur `main`. Après contrôle de sa
+configuration effective et des variables/secrets par le propriétaire, et
+**uniquement après autorisation spécifique du coût**, déclencher manuellement
+la tâche synthétique `AQ-009`.
 Enchaîner `plan`, revue OpenSpec, `apply`, puis `finalize`, avec **une
 autorisation de dépense distincte pour chaque phase** et aucun retry payant
 automatique. Vérifier la branche, la PR brouillon, le check indépendant au
