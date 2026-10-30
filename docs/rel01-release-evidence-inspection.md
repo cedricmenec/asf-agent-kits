@@ -20,8 +20,9 @@ Le manifeste est un **asset de release**, construit **après** la fixation du co
 `build_candidate.py` accepte `--source-commit` pour lire les fichiers du
 descripteur dans les **objets Git** d'un checkout local, sans utiliser les
 éventuelles modifications du worktree. Le remote `origin`, le commit exact,
-les chemins et les empreintes sont contrôlés. Le descripteur doit indiquer
-le même `sourceRepository` et `sourceCommitSha`. Par exemple :
+les chemins, les empreintes et la version déclarée dans le `version.json`
+épinglé sont contrôlés. Le descripteur doit indiquer le même
+`sourceRepository`, `sourceCommitSha` et `kitVersion`. Par exemple :
 
 ```bash
 python3 tools/build_candidate.py \

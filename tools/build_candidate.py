@@ -89,8 +89,8 @@ def git_output(root, *args):
         raise PlanError('pinned Git source cannot be inspected') from exc
 
 
-def git_artifact_digest(root, commit, relative):
-    """Hash a regular blob at an exact Git commit, ignoring worktree changes."""
+def git_artifact_bytes(root, commit, relative):
+    """Read a bounded regular blob at an exact Git commit, ignoring worktree changes."""
     entry = git_output(root, 'ls-tree', '-z', commit, '--', relative)
     rows = entry.split(b'\0')
     if len(rows) != 2 or rows[1] != b'' or b'\t' not in rows[0]:
@@ -108,7 +108,12 @@ def git_artifact_digest(root, commit, relative):
     content = git_output(root, 'cat-file', 'blob', oid)
     if len(content) != size:
         raise PlanError('Git artifact byte count differs')
-    return hashlib.sha256(content).hexdigest(), size
+    return content
+
+
+def git_artifact_digest(root, commit, relative):
+    content = git_artifact_bytes(root, commit, relative)
+    return hashlib.sha256(content).hexdigest(), len(content)
 
 
 def build_document(document, digest_for_path):
@@ -159,6 +164,17 @@ def build_git_candidate(source, commit, document):
     if remote not in (f'https://github.com/{repository}', f'https://github.com/{repository}.git',
                       f'git@github.com:{repository}', f'git@github.com:{repository}.git'):
         raise PlanError('candidate source Git remote does not match repository')
+    kit = document.get('kitId')
+    if not isinstance(kit, str) or not re.fullmatch(r'[a-z0-9-]{1,60}', kit):
+        raise PlanError('invalid candidate kit identity')
+    try:
+        version = json.loads(git_artifact_bytes(root, commit, f'kits/{kit}/version.json'),
+                             object_pairs_hook=unique_pairs)
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise PlanError('invalid pinned source version metadata') from exc
+    if (not isinstance(version, dict) or version.get('schemaVersion') != 1 or
+            version.get('kitVersion') != document.get('kitVersion')):
+        raise PlanError('candidate version differs from pinned source version metadata')
     return build_document(document, lambda path: git_artifact_digest(root, commit, path))
 
 
