@@ -17,7 +17,7 @@ import urllib.parse
 from pathlib import Path
 
 from asf_agentkit_github_read import GitHubReader, ReadUnavailable
-from build_candidate import unique_pairs
+from build_candidate import PlanError, unique_pairs
 from check_release_claim import path_issue
 from validate_contracts import validate
 
@@ -183,7 +183,7 @@ def inspect(reader, repository, kit, version, expected_publisher, raw):
         result.update({"releaseEvidenceConsistent": True, "sourceCommitSha": commit,
                        "releaseTag": tag, "artifactCount": len(artifacts),
                        "manifestSha256": hashlib.sha256(raw).hexdigest()})
-    except (EvidenceRefused, ReadUnavailable, ValueError, KeyError, TypeError, OSError) as exc:
+    except (EvidenceRefused, PlanError, ReadUnavailable, ValueError, KeyError, TypeError, OSError) as exc:
         # The error must remain a status, not an echo of untrusted remote data.
         result["errors"] = ["evidence unavailable or contradictory: " +
                             (exc.status if isinstance(exc, ReadUnavailable) else
