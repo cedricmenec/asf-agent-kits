@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'tools'))
-from build_candidate import PlanError, build_candidate, manifest_bytes  # noqa: E402
+from build_candidate import PlanError, build_candidate, build_git_candidate, manifest_bytes  # noqa: E402
 
 
 class CandidateTests(unittest.TestCase):
@@ -139,6 +139,56 @@ class CandidateTests(unittest.TestCase):
                 self.save()
                 with self.assertRaisesRegex(PlanError, 'non-empty array'):
                     build_candidate(self.source, self.descriptor)
+
+    def test_git_candidate_uses_exact_committed_bytes(self):
+        def git(*args):
+            return subprocess.run(['git', '-C', str(self.source), *args], check=True,
+                                  capture_output=True).stdout.decode().strip()
+        git('init', '-q')
+        git('remote', 'add', 'origin', 'https://github.com/synthetic/repo.git')
+        version = self.source / 'kits/opencode-openspec/version.json'
+        version.parent.mkdir(parents=True)
+        version.write_text('{"schemaVersion":1,"kitVersion":"1.0.1"}\n')
+        git('add', '.')
+        git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+            'commit', '-qm', 'pinned')
+        commit = git('rev-parse', 'HEAD')
+        self.payload['sourceCommitSha'] = commit
+        self.save()
+        first = build_git_candidate(self.source, commit, self.payload)
+        self.payload['kitVersion'] = '9.9.9'
+        with self.assertRaisesRegex(PlanError, 'candidate version differs'):
+            build_git_candidate(self.source, commit, self.payload)
+        self.payload['kitVersion'] = '1.0.1'
+        (self.source / 'docs/first.md').write_text('uncommitted mutation\n')
+        self.assertEqual(first, build_git_candidate(self.source, commit, self.payload))
+        self.assertNotEqual(first, build_candidate(self.source, self.descriptor))
+        self.payload['sourceCommitSha'] = 'a' * 40
+        with self.assertRaisesRegex(PlanError, 'commit differs'):
+            build_git_candidate(self.source, commit, self.payload)
+        self.payload['sourceCommitSha'] = commit
+        git('remote', 'set-url', 'origin', 'https://github.com/other/repo.git')
+        with self.assertRaisesRegex(PlanError, 'remote'):
+            build_git_candidate(self.source, commit, self.payload)
+
+    def test_git_candidate_rejects_committed_symlinks(self):
+        def git(*args):
+            return subprocess.run(['git', '-C', str(self.source), *args], check=True,
+                                  capture_output=True).stdout.decode().strip()
+        git('init', '-q')
+        git('remote', 'add', 'origin', 'https://github.com/synthetic/repo.git')
+        version = self.source / 'kits/opencode-openspec/version.json'
+        version.parent.mkdir(parents=True)
+        version.write_text('{"schemaVersion":1,"kitVersion":"1.0.1"}\n')
+        (self.source / 'docs/first.md').unlink()
+        (self.source / 'docs/first.md').symlink_to('second.md')
+        git('add', '.')
+        git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+            'commit', '-qm', 'symlink')
+        commit = git('rev-parse', 'HEAD')
+        self.payload['sourceCommitSha'] = commit
+        with self.assertRaisesRegex(PlanError, 'regular Git blob'):
+            build_git_candidate(self.source, commit, self.payload)
 
 
 if __name__ == '__main__':

@@ -18,6 +18,7 @@ from pathlib import Path
 
 from render_mvp_kit import FILES, TEMPLATES, RenderError, checked_config, render_mvp
 from render_templates import unique_pairs
+from build_candidate import (PlanError, RELEASE_KEYS, build_git_candidate, strict_json)
 from asf_agentkit_github_read import GitHubReader, remote_doctor
 from asf_agentkit_publish import BRANCH, GitHubAppIssuer, PublishRefused, mint_target_writer, publish_draft
 
@@ -195,6 +196,33 @@ def rendered_source(source, commit, version, config):
         preview = render_mvp(root, config)
     return {item["path"]: base64.b64decode(item["contentBase64"], validate=True)
             for item in preview["files"]}
+
+
+def check_candidate_manifest(source, commit, version, path):
+    """Check candidate bytes against Git objects; never confer release trust."""
+    candidate = strict_json(path)
+    if not isinstance(candidate, dict) or not isinstance(candidate.get('artifacts'), list):
+        raise CliError('Invalid candidate manifest document')
+    artifacts = candidate['artifacts']
+    if not artifacts or len(artifacts) > 50 or any(
+            not isinstance(item, dict) or not isinstance(item.get('path'), str)
+            for item in artifacts):
+        raise CliError('Invalid candidate artifact inventory')
+    if (candidate.get('sourceRepository') != 'cedricmenec/asf-agent-kits' or
+            candidate.get('sourceCommitSha') != commit or
+            candidate.get('kitId') != 'opencode-openspec' or
+            candidate.get('kitVersion') != version):
+        raise CliError('Candidate identity, commit or version differs from requested source')
+    paths = [item['path'] for item in artifacts]
+    required = {TEMPLATES + name for name, _ in FILES}
+    if not required.issubset(paths):
+        raise CliError('Candidate omits required kit templates')
+    descriptor = {key: candidate.get(key) for key in RELEASE_KEYS}
+    descriptor['paths'] = paths
+    actual = build_git_candidate(source, commit, descriptor)
+    if actual != candidate:
+        raise CliError('Candidate manifest differs from exact Git source bytes')
+    return digest(canonical(candidate))
 
 
 def desired_lock(files, config, version, sha):
@@ -416,6 +444,8 @@ def main(argv=None):
             cmd.add_argument("--version", required=True)
             cmd.add_argument("--source", required=True)
             cmd.add_argument("--source-commit", required=True)
+            cmd.add_argument("--candidate-manifest",
+                             help="Unattested manifest preview against pinned Git; dry-run only")
             cmd.add_argument("--config", required=True)
             cmd.add_argument("--dry-run", action="store_true")
             if name == "install":
@@ -465,8 +495,13 @@ def main(argv=None):
                 raise CliError("Upgrade is currently dry-run only")
             if args.command == "install" and sum((args.apply, args.dry_run, args.pr)) != 1:
                 raise CliError("Choose exactly one of --apply, --dry-run or --pr")
+            if args.candidate_manifest and not args.dry_run:
+                raise CliError("Candidate manifest is untrusted: only --dry-run is allowed")
             if Path(args.source).absolute() == target:
                 raise CliError("Source and target checkouts must differ")
+            candidate_sha = (check_candidate_manifest(args.source, args.source_commit,
+                                                      args.version, args.candidate_manifest)
+                             if args.candidate_manifest else None)
             files = rendered_source(args.source, args.source_commit, args.version, cfg)
             new_lock = desired_lock(files, cfg, args.version, args.source_commit)
             old_lock = read_lock(target)
@@ -476,6 +511,11 @@ def main(argv=None):
             report["configurationSha256"] = new_lock["configurationSha256"]
             report["managedFilesSha256"] = new_lock["managedFiles"]
             report["lockSha256"] = digest(canonical(new_lock))
+            if candidate_sha:
+                report["candidateManifestCanonicalSha256"] = candidate_sha
+                report["candidateBytesMatchPinnedGit"] = True
+                # Matching SHA-256 is not a publisher attestation or a tag rule.
+                report["releaseProvenanceVerified"] = False
             plan_sha = digest(canonical(report))
             report["planSha256"] = plan_sha
             if args.command == "install" and args.apply:
@@ -512,7 +552,7 @@ def main(argv=None):
                     plan_sha, files, canonical(new_lock))
         print(json.dumps(report, sort_keys=True, indent=2))
         return 2 if report.get("status") == "blocked" else 0
-    except (CliError, RenderError, PublishRefused, OSError, UnicodeError, ValueError, KeyError, TypeError) as exc:
+    except (CliError, PlanError, RenderError, PublishRefused, OSError, UnicodeError, ValueError, KeyError, TypeError) as exc:
         print("ASF-AgentKit REFUSED: " + str(exc), file=sys.stderr)
         return 3
 
