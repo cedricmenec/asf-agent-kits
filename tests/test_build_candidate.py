@@ -32,6 +32,10 @@ class CandidateTests(unittest.TestCase):
             file = self.source / path
             file.parent.mkdir(parents=True, exist_ok=True)
             file.write_bytes(data)
+        workflow = self.source / 'kits/opencode-openspec/templates/agent-openspec.yml.tmpl'
+        workflow.parent.mkdir(parents=True)
+        workflow.write_text("  node-version: '22.16.0'\n  node-version: '22.16.0'\n"
+                            '  npm install --global @fission-ai/openspec@1.14.1 opencode-ai@1.0.0\n')
         self.save()
 
     def save(self):
@@ -147,7 +151,7 @@ class CandidateTests(unittest.TestCase):
         git('init', '-q')
         git('remote', 'add', 'origin', 'https://github.com/synthetic/repo.git')
         version = self.source / 'kits/opencode-openspec/version.json'
-        version.parent.mkdir(parents=True)
+        version.parent.mkdir(parents=True, exist_ok=True)
         version.write_text('{"schemaVersion":1,"kitVersion":"1.0.1"}\n')
         git('add', '.')
         git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
@@ -160,6 +164,13 @@ class CandidateTests(unittest.TestCase):
         with self.assertRaisesRegex(PlanError, 'candidate version differs'):
             build_git_candidate(self.source, commit, self.payload)
         self.payload['kitVersion'] = '1.0.1'
+        for key, changed in (('nodeVersion', '22.99.0'),
+                             ('openCodeVersion', '2.0.0'),
+                             ('openSpecVersion', '2.0.0')):
+            incorrect = copy.deepcopy(self.payload)
+            incorrect['runtime'][key] = changed
+            with self.subTest(key=key), self.assertRaisesRegex(PlanError, 'candidate runtime differs'):
+                build_git_candidate(self.source, commit, incorrect)
         (self.source / 'docs/first.md').write_text('uncommitted mutation\n')
         self.assertEqual(first, build_git_candidate(self.source, commit, self.payload))
         self.assertNotEqual(first, build_candidate(self.source, self.descriptor))
@@ -170,6 +181,16 @@ class CandidateTests(unittest.TestCase):
         git('remote', 'set-url', 'origin', 'https://github.com/other/repo.git')
         with self.assertRaisesRegex(PlanError, 'remote'):
             build_git_candidate(self.source, commit, self.payload)
+        git('remote', 'set-url', 'origin', 'https://github.com/synthetic/repo.git')
+        workflow = self.source / 'kits/opencode-openspec/templates/agent-openspec.yml.tmpl'
+        workflow.write_text(workflow.read_text().replace('22.16.0', '22'))
+        git('add', 'kits/opencode-openspec/templates/agent-openspec.yml.tmpl')
+        git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+            'commit', '-qm', 'floating Node version')
+        floating_commit = git('rev-parse', 'HEAD')
+        self.payload['sourceCommitSha'] = floating_commit
+        with self.assertRaisesRegex(PlanError, 'requires explicit, consistent runtime pins'):
+            build_git_candidate(self.source, floating_commit, self.payload)
 
     def test_git_candidate_rejects_committed_symlinks(self):
         def git(*args):
@@ -178,7 +199,7 @@ class CandidateTests(unittest.TestCase):
         git('init', '-q')
         git('remote', 'add', 'origin', 'https://github.com/synthetic/repo.git')
         version = self.source / 'kits/opencode-openspec/version.json'
-        version.parent.mkdir(parents=True)
+        version.parent.mkdir(parents=True, exist_ok=True)
         version.write_text('{"schemaVersion":1,"kitVersion":"1.0.1"}\n')
         (self.source / 'docs/first.md').unlink()
         (self.source / 'docs/first.md').symlink_to('second.md')

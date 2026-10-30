@@ -1,6 +1,6 @@
 # REL-01 : contrôle en lecture seule des preuves d'une release
 
-**Statut : proposition à qualifier en PR.** Ce contrôle ne crée ni tag, ni release, ni ruleset. Il ne modifie aucun dépôt et n'autorise aucune installation ou promotion.
+**Statut : contrôles consultatifs intégrés par les PR #98 et #99, puis durcis pour les versions d'exécution.** Aucun tag, release ou ruleset créé ; aucune installation de production ni promotion autorisée.
 
 ## Objectif limité
 
@@ -30,6 +30,13 @@ python3 tools/build_candidate.py \
   --source-commit SHA_SOURCE_COMPLET \
   --descriptor /chemin/vers/metadata-et-inventaire.json
 ```
+
+Pour le profil `opencode-openspec`, les versions déclarées de Node, OpenCode
+et OpenSpec doivent aussi correspondre aux commandes et aux **deux** étapes
+`setup-node` du workflow au commit exact. La version Node retenue pour cette
+qualification est `22.23.3` ; elle est épinglée dans le modèle. Une version
+majeure flottante ou une incohérence provoque un refus. Ce contrôle ne prouve
+ni le verrouillage des dépendances transitives npm, ni la provenance distante.
 
 Le descripteur énumère explicitement les chemins à inclure ; il n'existe
 pas de périmètre de release implicitement approuvé. La sortie est un manifeste

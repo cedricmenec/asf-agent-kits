@@ -25,6 +25,8 @@ class RenderMvpKitTests(unittest.TestCase):
         workflow = next(x for x in preview['files'] if x['path'].startswith('.github/'))
         text = base64.b64decode(workflow['contentBase64']).decode()
         self.assertIn('workflow_dispatch:', text)
+        self.assertEqual(text.count("node-version: '22.23.3'"), 2)
+        self.assertNotIn("node-version: '22'", text)
         self.assertNotIn('workflow_call:', text)
         self.assertIn('I_AUTHORIZE_ONE_PAID_PHASE', text)
         self.assertIn('actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547', text)
