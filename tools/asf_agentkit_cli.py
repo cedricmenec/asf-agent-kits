@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import stat
 import subprocess
 import sys
@@ -360,18 +361,82 @@ def recover_created(root, relative, identity):
         os.close(fd)
 
 
-def create_only(target, files, new_lock, preview, expected_head, default_branch):
-    if preview["status"] != "proposed":
-        raise CliError("Refusing blocked plan")
-    if any(x["action"] not in ("create", "unchanged") for x in preview["operations"]):
-        raise CliError("Only create-only local installs are supported; updates require a separate reviewed PR")
+def replace_managed(root, relative, expected_bytes, replacement):
+    """Replace one unchanged managed file through a no-follow parent dirfd.
+
+    This is a local ordinary-branch operation, not a cross-process CAS or an
+    authorization to change a protected Git ref. A concurrent writer is out of
+    scope; the caller requires a clean, exclusively controlled checkout.
+    """
+    if relative not in ALLOWED and relative != LOCK_PATH:
+        raise CliError("Unowned upgrade destination")
+    if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+        raise CliError("Safe local replacement requires O_NOFOLLOW and O_DIRECTORY")
+    fd = parent_fd(root, relative)
+    leaf = relative.split("/")[-1]
+    temporary = ".asf-agentkit-upgrade-" + secrets.token_hex(12)
+    staged = False
+    replaced = False
+    try:
+        source = os.open(leaf, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
+        with os.fdopen(source, "rb") as stream:
+            before = os.fstat(stream.fileno())
+            if (not stat.S_ISREG(before.st_mode) or before.st_nlink != 1 or
+                    before.st_size > MAX_FILE):
+                raise CliError("Upgrade target is not a regular singly-linked file")
+            observed_bytes = stream.read(MAX_FILE + 1)
+            after = os.fstat(stream.fileno())
+        if (observed_bytes != expected_bytes or
+                (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) !=
+                (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)):
+            raise CliError("Managed file moved or changed during upgrade: " + relative)
+        output = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                         stat.S_IMODE(before.st_mode), dir_fd=fd)
+        staged = True
+        with os.fdopen(output, "wb") as stream:
+            stream.write(replacement)
+            stream.flush()
+            os.fsync(stream.fileno())
+        current = os.stat(leaf, dir_fd=fd, follow_symlinks=False)
+        if (current.st_dev, current.st_ino, current.st_size, current.st_mtime_ns) != (
+                before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns):
+            raise CliError("Upgrade target changed before replace: " + relative)
+        os.replace(temporary, leaf, src_dir_fd=fd, dst_dir_fd=fd)
+        staged = False
+        replaced = True
+        os.fsync(fd)
+        installed = os.stat(leaf, dir_fd=fd, follow_symlinks=False)
+        return installed.st_dev, installed.st_ino
+    except OSError as exc:
+        if replaced:
+            raise CliError("Upgrade replacement may have committed; inspect the local branch") from exc
+        raise
+    finally:
+        if staged:
+            try:
+                os.unlink(temporary, dir_fd=fd)
+                os.fsync(fd)
+            except OSError:
+                pass
+        os.close(fd)
+
+
+def checked_apply_branch(target, expected_head, default_branch):
     if not SHA.fullmatch(expected_head or "") or git(target, "rev-parse", "HEAD").decode().strip() != expected_head:
         raise CliError("Target HEAD is not the explicitly approved SHA")
     branch = git(target, "symbolic-ref", "--quiet", "--short", "HEAD").decode().strip()
     if not branch or branch in (default_branch, "main", "master") or branch.startswith("refs/"):
         raise CliError("Apply requires an ordinary non-default target branch")
-    if git(target, "status", "--porcelain"):
+    if git(target, "status", "--porcelain", "--untracked-files=all"):
         raise CliError("Apply requires a clean worktree; inspect changes first")
+
+
+def create_only(target, files, new_lock, preview, expected_head, default_branch):
+    if preview["status"] != "proposed":
+        raise CliError("Refusing blocked plan")
+    if any(x["action"] not in ("create", "unchanged") for x in preview["operations"]):
+        raise CliError("Only create-only local installs are supported; updates require a separate reviewed PR")
+    checked_apply_branch(target, expected_head, default_branch)
     pending = dict(files)
     pending[LOCK_PATH] = canonical(new_lock)
     created = []
@@ -386,6 +451,72 @@ def create_only(target, files, new_lock, preview, expected_head, default_branch)
     except (OSError, CliError):
         for rel, identity in reversed(created):
             recover_created(target, rel, identity)
+        raise
+
+
+def apply_upgrade(target, files, old_lock, new_lock, preview, expected_head, default_branch):
+    """Stage an explicitly reviewed upgrade in a clean ordinary local branch."""
+    if not old_lock or preview["operation"] != "upgrade" or preview["status"] != "proposed":
+        raise CliError("Upgrade requires an existing lock and a conflict-free plan")
+    checked_apply_branch(target, expected_head, default_branch)
+    if observed(target, LOCK_PATH) != canonical(old_lock):
+        raise CliError("Upgrade requires the exact previously installed lock bytes")
+    pending = dict(files)
+    pending[LOCK_PATH] = canonical(new_lock)
+    previous = {}
+    for item in preview["operations"]:
+        rel, action = item["path"], item["action"]
+        actual = observed(target, rel)
+        if action == "create" and actual is None:
+            continue
+        if action == "unchanged" and actual == pending[rel]:
+            continue
+        if action == "update" and actual is not None and (
+                rel == LOCK_PATH or digest(actual) == old_lock["managedFiles"].get(rel)):
+            previous[rel] = actual
+            continue
+        raise CliError("Upgrade plan changed before apply: " + rel)
+    applied = []
+    try:
+        # Keep the installed lock at the old version until all managed files
+        # have been successfully staged. The path sort alone puts it first.
+        for item in sorted(preview["operations"], key=lambda row: row["path"] == LOCK_PATH):
+            rel, action = item["path"], item["action"]
+            if action == "create":
+                identity = exclusive_file(target, rel, pending[rel])
+                applied.append((rel, "create", None, identity))
+            elif action == "update":
+                identity = replace_managed(target, rel, previous[rel], pending[rel])
+                applied.append((rel, "update", previous[rel], identity))
+        for rel, expected in pending.items():
+            if observed(target, rel) != expected:
+                raise CliError("Upgrade verification failed after apply: " + rel)
+        return sum(action == "create" for _, action, _, _ in applied), sum(
+            action == "update" for _, action, _, _ in applied)
+    except (OSError, CliError) as exc:
+        failed_rollback = []
+        for rel, action, original, identity in reversed(applied):
+            try:
+                current = observed(target, rel)
+                if current != pending[rel]:
+                    raise CliError("Upgrade result changed before rollback")
+                current_fd = parent_fd(target, rel)
+                try:
+                    info = os.stat(rel.split("/")[-1], dir_fd=current_fd,
+                                   follow_symlinks=False)
+                    if (info.st_dev, info.st_ino) != identity:
+                        raise CliError("Upgrade inode changed before rollback")
+                finally:
+                    os.close(current_fd)
+                if action == "create":
+                    recover_created(target, rel, identity)
+                else:
+                    replace_managed(target, rel, pending[rel], original)
+            except (OSError, CliError):
+                failed_rollback.append(rel)
+        if failed_rollback:
+            raise CliError("Upgrade interrupted; manual recovery required for: " +
+                           ", ".join(failed_rollback)) from exc
         raise
 
 
@@ -459,6 +590,12 @@ def main(argv=None):
                 cmd.add_argument("--expected-plan-sha")
                 cmd.add_argument("--expected-app-id", type=int)
                 cmd.add_argument("--github-app-jwt-env", default="GITHUB_APP_JWT")
+            else:
+                cmd.add_argument("--apply", action="store_true",
+                                 help="Stage a reviewed upgrade locally on an ordinary branch")
+                cmd.add_argument("--expected-head")
+                cmd.add_argument("--expected-plan-sha",
+                                 help="Exact digest from the approved upgrade dry-run")
         elif name == "doctor":
             cmd.add_argument("--config")
             cmd.add_argument("--github-read", action="store_true",
@@ -491,8 +628,8 @@ def main(argv=None):
                     raise CliError("Requested GitHub read token is not configured")
                 report["githubRead"] = remote_doctor(args.repo, cfg, GitHubReader(args.repo, token))
         else:
-            if args.command == "upgrade" and not args.dry_run:
-                raise CliError("Upgrade is currently dry-run only")
+            if args.command == "upgrade" and sum((args.apply, args.dry_run)) != 1:
+                raise CliError("Choose exactly one of --apply or --dry-run for upgrade")
             if args.command == "install" and sum((args.apply, args.dry_run, args.pr)) != 1:
                 raise CliError("Choose exactly one of --apply, --dry-run or --pr")
             if args.candidate_manifest and not args.dry_run:
@@ -523,6 +660,15 @@ def main(argv=None):
                                     args.expected_head, cfg["defaultBranch"])
                 report["writesPerformed"] = True
                 report["createdFiles"] = count
+                report["status"] = "applied-locally-uncommitted"
+            elif args.command == "upgrade" and args.apply:
+                if not DIGEST.fullmatch(args.expected_plan_sha or "") or args.expected_plan_sha != plan_sha:
+                    raise CliError("Approved upgrade dry-run plan digest mismatch")
+                created, updated = apply_upgrade(target, files, old_lock, new_lock, report,
+                                                 args.expected_head, cfg["defaultBranch"])
+                report["writesPerformed"] = True
+                report["createdFiles"] = created
+                report["updatedFiles"] = updated
                 report["status"] = "applied-locally-uncommitted"
             elif args.command == "install" and args.pr:
                 if report["status"] != "proposed" or any(
