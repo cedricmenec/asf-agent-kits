@@ -116,6 +116,24 @@ def git_artifact_digest(root, commit, relative):
     return hashlib.sha256(content).hexdigest(), len(content)
 
 
+def pinned_openspec_runtime(root, commit):
+    """Read the explicit runtime pins from the workflow at the source commit."""
+    path = 'kits/opencode-openspec/templates/agent-openspec.yml.tmpl'
+    try:
+        workflow = git_artifact_bytes(root, commit, path).decode('utf-8')
+    except UnicodeError as exc:
+        raise PlanError('pinned OpenSpec workflow is not UTF-8') from exc
+    nodes = re.findall(r"(?m)^[ \t]+node-version: '([0-9]+\.[0-9]+\.[0-9]+)'[ \t]*$", workflow)
+    packages = re.findall(
+        r'(?m)^[ \t]+npm install --global @fission-ai/openspec@([0-9]+\.[0-9]+\.[0-9]+) '
+        r'opencode-ai@([0-9]+\.[0-9]+\.[0-9]+)[ \t]*$', workflow)
+    if len(nodes) != 2 or len(set(nodes)) != 1 or len(packages) != 1:
+        raise PlanError('pinned OpenSpec workflow requires explicit, consistent runtime pins')
+    openspec, opencode = packages[0]
+    return {'nodeVersion': nodes[0], 'openCodeVersion': opencode,
+            'openSpecVersion': openspec}
+
+
 def build_document(document, digest_for_path):
     if not isinstance(document, dict) or set(document) != RELEASE_KEYS | {'paths'}:
         raise PlanError('descriptor must contain exactly release metadata and paths')
@@ -175,6 +193,8 @@ def build_git_candidate(source, commit, document):
     if (not isinstance(version, dict) or version.get('schemaVersion') != 1 or
             version.get('kitVersion') != document.get('kitVersion')):
         raise PlanError('candidate version differs from pinned source version metadata')
+    if kit == 'opencode-openspec' and document.get('runtime') != pinned_openspec_runtime(root, commit):
+        raise PlanError('candidate runtime differs from pinned OpenSpec workflow')
     return build_document(document, lambda path: git_artifact_digest(root, commit, path))
 
 
