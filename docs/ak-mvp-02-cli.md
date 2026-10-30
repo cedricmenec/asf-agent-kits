@@ -49,7 +49,19 @@ Commands:
   observations, **not proof of effective protection or permission to merge**.
 - `upgrade --dry-run`: compare a higher exact SemVer Git commit with the
   installed lock. It blocks modified overlays, existing unmanaged paths and
-  removals. Actual upgrade writes remain a separate, reviewed #90 step.
+  removals.
+- `upgrade --apply --expected-head SHA --expected-plan-sha DIGEST`: apply
+  only the explicitly reviewed, conflict-free upgrade plan in a clean,
+  ordinary local branch. It checks existing managed bytes against their lock,
+  replaces only unchanged owned files using no-follow directory descriptors,
+  and updates the lock last. Failed writes attempt a byte- and inode-checked
+  local rollback; an interrupted or externally modified result requires manual
+  inspection. Nothing is committed or pushed. Open a normal Git PR, review
+  its diff and CI, then merge with owner approval. To revert a merged upgrade,
+  use a reviewed Git revert PR that restores the prior managed files and lock;
+  no separate migration engine is introduced. Concurrent writers are not
+  supported by this local checkout operation, and it does not establish release
+  provenance or production activation.
 
 ## Lock and source trust
 

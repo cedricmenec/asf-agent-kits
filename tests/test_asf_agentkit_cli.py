@@ -13,7 +13,8 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'tools'))
 from asf_agentkit_cli import (CliError, LOCK_PATH, origin, safe_member,
-                              read_lock, observed, main)
+                              read_lock, observed, main, apply_upgrade,
+                              desired_lock, plan, rendered_source, replace_managed)
 from build_candidate import build_git_candidate, manifest_bytes
 from render_mvp_kit import FILES
 
@@ -208,6 +209,115 @@ class CliLocalCheckout(unittest.TestCase):
         target_doc.write_text(target_doc.read_text() + '\nLocal overlay.\n')
         blocked = self.cli('upgrade', args + ['--dry-run'], expected=2)
         self.assertEqual(blocked['status'], 'blocked')
+
+    def test_reviewed_upgrade_apply_and_git_revert_restore_prior_lock(self):
+        self.install()
+        self.commit(self.target, 'installed v0.1.0')
+        installed_head = cmd(self.target, 'git', 'rev-parse', 'HEAD')
+        original_lock = (self.target/LOCK_PATH).read_bytes()
+        original_workflow = (self.target/'.github/workflows/asf-agentkit-openspec.yml').read_bytes()
+
+        version = self.source/'kits/opencode-openspec/version.json'
+        content = json.loads(version.read_text())
+        content['kitVersion'] = '0.2.0'
+        version.write_text(json.dumps(content))
+        template = self.source/'kits/opencode-openspec/templates/manual-acceptance.md.tmpl'
+        template.write_text(template.read_text() + '\nUpgraded acceptance note.\n')
+        self.commit(self.source, 'pinned source v0.2.0')
+        newer = cmd(self.source, 'git', 'rev-parse', 'HEAD')
+        args = self.baseargs.copy()
+        args[args.index('--version')+1] = '0.2.0'
+        args[args.index('--source-commit')+1] = newer
+        preview = self.cli('upgrade', args + ['--dry-run'])
+        self.assertEqual(preview['status'], 'proposed')
+        self.assertIn('update', [item['action'] for item in preview['operations']])
+        approved = args + ['--apply', '--expected-head', installed_head,
+                           '--expected-plan-sha', preview['planSha256']]
+        incorrect = approved.copy()
+        incorrect[-1] = '0' * 64
+        self.cli('upgrade', incorrect, expected=3)
+        self.assertEqual((self.target/LOCK_PATH).read_bytes(), original_lock)
+
+        applied = self.cli('upgrade', approved)
+        self.assertEqual(applied['status'], 'applied-locally-uncommitted')
+        self.assertTrue(applied['writesPerformed'])
+        self.assertGreaterEqual(applied['updatedFiles'], 2)
+        self.assertEqual(applied['createdFiles'], 0)
+        self.assertEqual(read_lock(self.target)['version'], '0.2.0')
+        self.assertEqual(self.cli('status', args[:4])['status'], 'hash-match')
+        unchanged = self.cli('install', args + ['--dry-run'])
+        self.assertEqual({item['action'] for item in unchanged['operations']}, {'unchanged'})
+        self.assertNotEqual((self.target/LOCK_PATH).read_bytes(), original_lock)
+        self.assertEqual((self.target/'.github/workflows/asf-agentkit-openspec.yml').read_bytes(),
+                         original_workflow)
+        self.assertEqual(set(cmd(self.target, 'git', 'diff', '--name-only').splitlines()),
+                         {LOCK_PATH, '.asf/agentkit/manual-acceptance.md'})
+        self.commit(self.target, 'reviewed upgrade v0.2.0')
+        cmd(self.target, 'git', '-c', 'user.name=Fixture',
+            '-c', 'user.email=fixture@example.invalid', 'revert', '--no-edit', 'HEAD')
+        self.assertEqual((self.target/LOCK_PATH).read_bytes(), original_lock)
+        self.assertEqual(read_lock(self.target)['version'], '0.1.0')
+        self.assertEqual(self.cli('status', args[:4])['status'], 'hash-match')
+
+    def test_upgrade_apply_refuses_overlay_and_wrong_branch_without_writes(self):
+        self.install()
+        self.commit(self.target, 'installed')
+        installed_head = cmd(self.target, 'git', 'rev-parse', 'HEAD')
+        version = self.source/'kits/opencode-openspec/version.json'
+        content = json.loads(version.read_text())
+        content['kitVersion'] = '0.2.0'
+        version.write_text(json.dumps(content))
+        self.commit(self.source, 'next version')
+        newer = cmd(self.source, 'git', 'rev-parse', 'HEAD')
+        args = self.baseargs.copy()
+        args[args.index('--version')+1] = '0.2.0'
+        args[args.index('--source-commit')+1] = newer
+        preview = self.cli('upgrade', args + ['--dry-run'])
+        approved = args + ['--apply', '--expected-head', installed_head,
+                           '--expected-plan-sha', preview['planSha256']]
+        self.cli('upgrade', approved[:-3] + ['0' * 40] + approved[-2:], expected=3)
+        self.assertEqual(cmd(self.target, 'git', 'status', '--porcelain'), '')
+        cmd(self.target, 'git', 'switch', '-q', '-c', 'main')
+        self.cli('upgrade', approved, expected=3)
+        cmd(self.target, 'git', 'switch', '-q', 'feature/agentkit-install')
+        existing = self.target/'.asf/agentkit/manual-acceptance.md'
+        existing.write_text(existing.read_text() + '\nUnmanaged local note.\n')
+        self.cli('upgrade', approved, expected=3)
+        self.assertEqual(read_lock(self.target)['version'], '0.1.0')
+        self.assertIn('Unmanaged local note.', existing.read_text())
+
+    def test_upgrade_rolls_back_earlier_files_if_lock_update_fails(self):
+        self.install()
+        self.commit(self.target, 'installed')
+        installed_head = cmd(self.target, 'git', 'rev-parse', 'HEAD')
+        original_lock = (self.target/LOCK_PATH).read_bytes()
+        original_doc = (self.target/'.asf/agentkit/manual-acceptance.md').read_bytes()
+        version = self.source/'kits/opencode-openspec/version.json'
+        metadata = json.loads(version.read_text())
+        metadata['kitVersion'] = '0.2.0'
+        version.write_text(json.dumps(metadata))
+        template = self.source/'kits/opencode-openspec/templates/manual-acceptance.md.tmpl'
+        template.write_text(template.read_text() + '\nChanged for upgraded kit.\n')
+        self.commit(self.source, 'next pinned version')
+        newer = cmd(self.source, 'git', 'rev-parse', 'HEAD')
+        config = json.loads(self.config.read_text())
+        files = rendered_source(self.source, newer, '0.2.0', config)
+        old = read_lock(self.target)
+        new = desired_lock(files, config, '0.2.0', newer)
+        preview = plan(self.target, config, files, old, new, 'upgrade')
+        original_replace = replace_managed
+
+        def fail_lock(root, relative, previous, replacement):
+            if relative == LOCK_PATH:
+                raise CliError('Injected lock replacement failure')
+            return original_replace(root, relative, previous, replacement)
+
+        with patch('asf_agentkit_cli.replace_managed', side_effect=fail_lock):
+            with self.assertRaisesRegex(CliError, 'Injected lock replacement failure'):
+                apply_upgrade(self.target, files, old, new, preview, installed_head, 'main')
+        self.assertEqual((self.target/LOCK_PATH).read_bytes(), original_lock)
+        self.assertEqual((self.target/'.asf/agentkit/manual-acceptance.md').read_bytes(), original_doc)
+        self.assertEqual(cmd(self.target, 'git', 'status', '--porcelain'), '')
 
     def test_target_remote_mismatch_and_untrusted_lock_refused(self):
         wrong = self.baseargs.copy()
