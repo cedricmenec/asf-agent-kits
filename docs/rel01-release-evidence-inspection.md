@@ -15,6 +15,40 @@ Le manifeste est un **asset de release**, construit **après** la fixation du co
 
 ## Exécution consultative
 
+### Préparer un manifeste depuis des objets Git exacts (sans publication)
+
+`build_candidate.py` accepte `--source-commit` pour lire les fichiers du
+descripteur dans les **objets Git** d'un checkout local, sans utiliser les
+éventuelles modifications du worktree. Le remote `origin`, le commit exact,
+les chemins et les empreintes sont contrôlés. Le descripteur doit indiquer
+le même `sourceRepository` et `sourceCommitSha`. Par exemple :
+
+```bash
+python3 tools/build_candidate.py \
+  --source /chemin/vers/asf-agent-kits \
+  --source-commit SHA_SOURCE_COMPLET \
+  --descriptor /chemin/vers/metadata-et-inventaire.json
+```
+
+Le descripteur énumère explicitement les chemins à inclure ; il n'existe
+pas de périmètre de release implicitement approuvé. La sortie est un manifeste
+**candidat non attesté**, même si les empreintes des blobs sont exactes.
+
+Pour évaluer son usage sans installer ni publier, la CLI prend en charge
+`install --dry-run --candidate-manifest /chemin/vers/release-manifest.json`
+(ou `upgrade --dry-run` avec ses paramètres habituels). Elle vérifie
+les métadonnées, les neuf templates requis et les empreintes de **tous**
+les artefacts énumérés contre le commit local épinglé. La sortie contient
+`candidateBytesMatchPinnedGit=true`, une empreinte du JSON **canonique**
+et conserve `releaseProvenanceVerified=false` et le niveau de confiance
+`user-pinned-git-object-unattested`. Un manifeste candidat est **refusé**
+avec `--apply` ou `--pr` : il ne permet pas de promouvoir une release.
+
+Cette étape ne valide ni le pinning exact de Node et des dépendances,
+ni une attestation de l'éditeur, ni les protections de tags/releases, ni
+le chemin d'installation depuis de véritables assets GitHub publiés.
+Ces gates restent à traiter avant une release officielle.
+
 Après installation des dépendances Python déjà figées dans `requirements-contracts.txt`, dans un environnement qui possède un jeton GitHub en lecture seule :
 
 ```bash

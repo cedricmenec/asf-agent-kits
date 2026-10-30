@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'tools'))
 from asf_agentkit_cli import (CliError, LOCK_PATH, origin, safe_member,
                               read_lock, observed, main)
+from build_candidate import build_git_candidate, manifest_bytes
 from render_mvp_kit import FILES
 
 
@@ -120,6 +121,40 @@ class CliLocalCheckout(unittest.TestCase):
             bad_pin, bad_version,
         ):
             self.cli('install', args + ['--dry-run'], expected=3)
+        self.assertEqual(cmd(self.target, 'git', 'status', '--porcelain'), '')
+
+    def test_candidate_manifest_preview_is_bounded_and_not_release_trust(self):
+        paths = ['kits/opencode-openspec/templates/' + name for name, _ in FILES]
+        metadata = {
+            'schemaVersion': 1, 'kitId': 'opencode-openspec', 'kitVersion': '0.1.0',
+            'coreVersion': '0.1.0', 'sourceRepository': 'cedricmenec/asf-agent-kits',
+            'sourceCommitSha': self.source_sha,
+            'releaseTag': 'kits/opencode-openspec/v0.1.0',
+            'runtime': {'nodeVersion': '22.23.3', 'openCodeVersion': '1.19.0',
+                        'openSpecVersion': '1.14.1'}, 'paths': paths,
+        }
+        manifest = self.config.parent/'release-manifest.json'
+        candidate = build_git_candidate(self.source, self.source_sha, metadata)
+        manifest.write_bytes(manifest_bytes(candidate))
+        args = self.baseargs + ['--candidate-manifest', str(manifest)]
+        preview = self.cli('install', args + ['--dry-run'])
+        self.assertTrue(preview['candidateBytesMatchPinnedGit'])
+        self.assertFalse(preview['releaseProvenanceVerified'])
+        self.assertEqual(len(preview['candidateManifestCanonicalSha256']), 64)
+        self.assertEqual(cmd(self.target, 'git', 'status', '--porcelain'), '')
+        self.cli('install', args + ['--apply', '--expected-head', self.default_sha], expected=3)
+        self.assertFalse((self.target/LOCK_PATH).exists())
+
+        tampered = json.loads(manifest.read_text())
+        tampered['artifacts'][0]['sha256'] = '0' * 64
+        manifest.write_text(json.dumps(tampered))
+        self.cli('install', args + ['--dry-run'], expected=3)
+        manifest.write_bytes(manifest_bytes(candidate))
+
+        missing_template = dict(candidate)
+        missing_template['artifacts'] = candidate['artifacts'][1:]
+        manifest.write_text(json.dumps(missing_template))
+        self.cli('install', args + ['--dry-run'], expected=3)
         self.assertEqual(cmd(self.target, 'git', 'status', '--porcelain'), '')
 
     def test_unmanaged_collision_symlink_and_case_alias_refused(self):
