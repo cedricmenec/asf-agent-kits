@@ -50,6 +50,22 @@ def manifest_bytes(value):
                        allow_nan=False) + '\n').encode('utf-8')
 
 
+def read_exact_manifest(path):
+    """Read bounded manifest bytes without following a symlink or trusting JSON formatting."""
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    with os.fdopen(fd, 'rb') as stream:
+        before = os.fstat(stream.fileno())
+        if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= MAX_DESCRIPTOR:
+            raise PlanError('manifest must be a small regular file')
+        raw = stream.read(MAX_DESCRIPTOR + 1)
+        after = os.fstat(stream.fileno())
+    if (len(raw) != before.st_size or
+            (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) !=
+            (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)):
+        raise PlanError('manifest changed during read')
+    return raw
+
+
 def validate_artifact_path(path):
     if unsafe_path(path) or path.endswith('/') or path == '.git' or '.git' in path.split('/'):
         raise PlanError('unsafe artifact path: ' + repr(path))
@@ -210,9 +226,8 @@ def main():
                   if args.source_commit else build_candidate(args.source, args.descriptor))
         generated = manifest_bytes(result)
         if args.verify_manifest:
-            expected = strict_json(args.verify_manifest)
-            if expected != result:
-                raise PlanError('local manifest differs from candidate artifacts/metadata')
+            if read_exact_manifest(args.verify_manifest) != generated:
+                raise PlanError('local manifest differs from canonical candidate bytes')
         sys.stdout.buffer.write(generated)
         return 0
     except (PlanError, OSError, ValueError, KeyError) as exc:
