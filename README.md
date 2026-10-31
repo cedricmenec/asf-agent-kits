@@ -6,7 +6,7 @@
 
 For a practical, non-paying installation replay, follow the [short qualification quickstart](docs/qualification-quickstart.md). It separates locally verified installation, real GitHub App workflow publication and CI from the still-unverified CLI App-JWT publication, `finalize` and sensitive merge gates.
 
-**Status (24 Oct 2026): offline R0/R1/R2a–R2d, R3a–R3e-02, R3f-01–04 and R3g-01–05 prototypes integrated on `main`; SEC-02a and SEC-02b-01 synthetic release checks, plus R5a-01/02/03, R5b-01 and R5b-02a read-only install/upgrade/PR publication previews and R3h-01/02/03/04 and R6a-01 offline handoff, versioned checkpoint-journal, disposable byte qualification and private Linux local CAS/lock fixtures integrated. NOT an installable, independently authenticated, attestable or released kit. Verify the latest refs/PRs/CI before relying on this dated status.**
+**Historical snapshot (24 Oct 2026, superseded):** the offline R0–R7 prototypes and synthetic release checks had been integrated, but the installable kit was not yet present. As of 31 Oct 2026, `main` contains development candidates for the OpenCode + OpenSpec kit, CLI installation/status/doctor/upgrade, and release-candidate checks. The installed source remains `user-pinned-git-object-unattested`; there is still no published production release, independent release provenance, or qualified install from an official release. Check current refs, PRs, checks and releases before relying on this status.
 
 This repository is intended to publish independently versioned, portable, manually-triggered agent kits for GitHub repositories. Initially it specifies:
 
