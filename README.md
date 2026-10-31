@@ -1,8 +1,10 @@
 # ASF Agent Kits
 
-## Current product priority: installable AgentKit MVP (24 Oct 2026)
+## Current release status (31 October 2026)
 
-**Installation-first decision:** [MVP scope and reuse matrix](docs/mvp-installation-scope.md) is the **active delivery plan**, while the offline R0–R7 catalogue below is retained as historical technical evidence. [AK-MVP-01 #88](https://github.com/cedricmenec/asf-agent-kits/issues/88), [CLI #89](https://github.com/cedricmenec/asf-agent-kits/issues/89) and [GitHub PR/setup #90](https://github.com/cedricmenec/asf-agent-kits/issues/90) have development candidates; [second-repository E2E #91](https://github.com/cedricmenec/asf-agent-kits/issues/91) remains open. **The pinned install/doctor CLI and draft-PR publisher remain development candidates: there is no signed production release or verified real CLI `install --pr` publication using an App JWT. The live OpenCode + OpenSpec AQ-009 `plan` and `apply` phases succeeded, producing [PR #4](https://github.com/cedricmenec/asf-agentkit-qualification/pull/4) with [independent CI](https://github.com/cedricmenec/asf-agentkit-qualification/actions/runs/40437506108) green on the exact head SHA. `finalize` and merge remain pending.** R3h local CAS/mutex fixtures remain in Git and CI but **are not MVP blockers**. ASF V3 controller/waves/global CAS belong to [ThreadStep's own backlog](https://github.com/cedricmenec/threadstep/issues/196); no cherry-pick or second CAS writer. Protected workflows, Apps, secrets, payments and releases need separately verified permissions and owner approvals.
+**Release status:** `kits/opencode-openspec/version.json` declares `0.1.0` / `development-unreleased`. The catalogue has no published GitHub release or release tag; independent tag-to-commit-to-manifest provenance and installation from an official release remain unqualified. `main` contains the install, status, doctor, upgrade and candidate-manifest tooling, but those capabilities have not been qualified from a published release.
+
+**Qualification evidence:** the AQ-009 OpenCode + OpenSpec `plan` and `apply` phases produced [PR #4](https://github.com/cedricmenec/asf-agentkit-qualification/pull/4), with [independent CI](https://github.com/cedricmenec/asf-agentkit-qualification/actions/runs/40437506108) green on its exact head SHA. `finalize` remains unqualified. REL-01 through REL-04 remain open for release provenance and representative installation, upgrade and user-journey evidence. No new paid run is authorized by this status.
 
 For a practical, non-paying installation replay, follow the [short qualification quickstart](docs/qualification-quickstart.md). It separates locally verified installation, real GitHub App workflow publication and CI from the still-unverified CLI App-JWT publication, `finalize` and sensitive merge gates.
 
@@ -13,9 +15,9 @@ This repository is intended to publish independently versioned, portable, manual
 - `opencode-openspec`: the standard OpenCode + OpenSpec profile, with manual `plan`, `apply`, `auto`, and `finalize` phases (not yet implemented in R0).
 - `opencode-direct`: an optional independent OpenCode profile, disabled by default (not yet implemented in R0).
 
-The executable shared core, trusted release publication, installer, upgrade/rollback application and agent workflows are **future milestones**. Read-only contract validation, drift planning, three-way preview and local candidate manifest generation are prototypes. ASF Backlog Orchestrator V1, ASF Controller V3, waves, global CAS, and automatic paid retries are excluded from this initial distribution.
+The product scope is a portable, manually triggered OpenCode + OpenSpec kit. ASF Backlog Orchestrator V1, ASF Controller V3, waves, global CAS and automatic paid retries are excluded from this distribution. The detailed implementation inventory below is a historical snapshot, superseded by the current status above.
 
-## Current development contents
+## Historical technical inventory (snapshot: 24 October 2026, superseded)
 
 **AK-MVP-01 #88 / merged PR #93:** A real manual OpenCode+OpenSpec template
 candidate is renderable and smoke-testable without payment using
@@ -86,7 +88,7 @@ Merely merging a ruleset JSON file in a PR does **not** apply GitHub Settings.
 
 ## Source of truth
 
-Read `AGENTS.md`, `ChatGPT.md`, `docs/adr/0001-catalogue-distribution.md` and the [ASF AgentKit Notion specification](https://app.notion.com/p/40012ac916368112b7fbc8d25dbb9838). Notion is the design reference; code on protected `main` is the current source for non-operational tooling. Track verified progress in the [living roadmap](https://app.notion.com/p/40112ac91636818dab99de3813963c0c). No installable release, effective installation or authenticated host was verified by these prototypes. Confirm GitHub state before making any live claim.
+Read `AGENTS.md`, `ChatGPT.md`, `docs/adr/0001-catalogue-distribution.md` and the [ASF AgentKit Notion specification](https://app.notion.com/p/40012ac916368112b7fbc8d25dbb9838). Notion is the design reference; code on protected `main` is the current source for non-operational tooling. Track verified progress in the [living roadmap](https://app.notion.com/p/40112ac91636818dab99de3813963c0c). The qualification installation and AQ-009 run are pilot evidence; there is still no qualified installation from a published release or independent release provenance. Confirm GitHub state before making any live claim.
 
 ## Versioning
 
