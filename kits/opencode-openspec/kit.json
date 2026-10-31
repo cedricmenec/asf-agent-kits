@@ -1,8 +1,12 @@
 {
   "id": "opencode-openspec",
-  "status": "runnable-local-template-unqualified",
+  "status": "runnable-local-template-qualified",
   "defaultEnabled": true,
   "manualPhases": ["plan", "apply", "finalize"],
   "requiresControllerV3": false,
-  "release": null
+  "release": {
+    "version": "1.0.0",
+    "tag": "kits/opencode-openspec/v1.0.0",
+    "distribution": "user-pinned-git-commit"
+  }
 }

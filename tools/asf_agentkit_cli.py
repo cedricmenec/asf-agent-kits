@@ -177,10 +177,13 @@ def source_snapshot(source, commit, version):
         return data
     manifest = json.loads(pinned_file("kits/opencode-openspec/version.json").decode("utf-8"),
                           object_pairs_hook=unique_pairs)
-    if manifest != {"schemaVersion": 1, "kitVersion": version,
-                    "distribution": "user-pinned-git-commit",
-                    "releaseStatus": "development-unreleased"}:
-        raise CliError("Pinned source does not declare requested exact development version")
+    if (not isinstance(manifest, dict) or
+            set(manifest) != {"schemaVersion", "kitVersion", "distribution", "releaseStatus"} or
+            type(manifest.get("schemaVersion")) is not int or manifest["schemaVersion"] != 1 or
+            manifest.get("kitVersion") != version or
+            manifest.get("distribution") != "user-pinned-git-commit" or
+            manifest.get("releaseStatus") not in ("development-unreleased", "stable")):
+        raise CliError("Pinned source does not declare the requested supported kit version")
     return pinned_file
 
 
