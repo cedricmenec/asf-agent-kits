@@ -65,6 +65,29 @@ class CandidateTests(unittest.TestCase):
         self.assertEqual(result.stdout, manifest.read_bytes())
         self.assertEqual(len(list(self.source.rglob('*.md'))), 2)
 
+    def test_cli_verify_rejects_noncanonical_equivalent_json(self):
+        # Semantically identical JSON is not the same manifest asset SHA-256.
+        manifest = self.root / 'manifest.json'
+        document = build_candidate(self.source, self.descriptor)
+        manifest.write_text(json.dumps(document, indent=2) + '\n', encoding='utf-8')
+        cmd = [sys.executable, str(ROOT / 'tools/build_candidate.py'), '--source', str(self.source),
+               '--descriptor', str(self.descriptor), '--verify-manifest', str(manifest)]
+        result = subprocess.run(cmd, capture_output=True, check=False)
+        self.assertEqual(result.returncode, 3, result.stderr)
+        self.assertEqual(result.stdout, b'')
+        self.assertIn(b'canonical candidate bytes', result.stderr)
+
+    def test_cli_verify_rejects_symlink_manifest(self):
+        real = self.root / 'real-manifest.json'
+        real.write_bytes(manifest_bytes(build_candidate(self.source, self.descriptor)))
+        link = self.root / 'manifest-symlink.json'
+        link.symlink_to(real)
+        cmd = [sys.executable, str(ROOT / 'tools/build_candidate.py'), '--source', str(self.source),
+               '--descriptor', str(self.descriptor), '--verify-manifest', str(link)]
+        result = subprocess.run(cmd, capture_output=True, check=False)
+        self.assertEqual(result.returncode, 3, result.stderr)
+        self.assertEqual(result.stdout, b'')
+
     def test_changed_artifact_fails_verification(self):
         manifest = self.root / 'manifest.json'
         manifest.write_bytes(manifest_bytes(build_candidate(self.source, self.descriptor)))
