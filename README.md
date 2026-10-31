@@ -2,9 +2,11 @@
 
 ## Current product priority: installable AgentKit MVP (24 Oct 2026)
 
-**Installation-first decision:** [MVP scope and reuse matrix](docs/mvp-installation-scope.md) is the **active delivery plan**, while the offline R0–R7 catalogue below is retained as historical technical evidence. Implement [AK-MVP-01 #88](https://github.com/cedricmenec/asf-agent-kits/issues/88) (extract the runnable manual OpenCode+OpenSpec executor from ThreadStep), then [CLI #89](https://github.com/cedricmenec/asf-agent-kits/issues/89), [GitHub PR/setup #90](https://github.com/cedricmenec/asf-agent-kits/issues/90), and [second-repository E2E and version upgrade #91](https://github.com/cedricmenec/asf-agent-kits/issues/91). **This repository still has no installable kit, CLI, versioned production release, or live deployment.** R3h local CAS/mutex fixtures remain in Git and CI but **are not MVP blockers**. ASF V3 controller/waves/global CAS belong to [ThreadStep's own backlog](https://github.com/cedricmenec/threadstep/issues/196); no cherry-pick or second CAS writer. Protected workflows, Apps, secrets, payments and releases need separately verified permissions and owner approvals.
+**Installation-first decision:****Installation-first decision:** [MVP scope and reuse matrix](docs/mvp-installation-scope.md) is the **active delivery plan**, while the offline R0–R7 catalogue below is retained as historical technical evidence. [AK-MVP-01 #88](https://github.com/cedricmenec/asf-agent-kits/issues/88), [CLI #89](https://github.com/cedricmenec/asf-agent-kits/issues/89) and [GitHub PR/setup #90](https://github.com/cedricmenec/asf-agent-kits/issues/90) have development candidates; [second-repository E2E #91](https://github.com/cedricmenec/asf-agent-kits/issues/91) remains open. **The pinned install/doctor CLI and draft-PR publisher remain development candidates: there is no signed production release or verified real CLI `install --pr` publication using an App JWT. The live OpenCode + OpenSpec AQ-009 `plan` and `apply` phases succeeded, producing [PR #4](https://github.com/cedricmenec/asf-agentkit-qualification/pull/4) with [independent CI](https://github.com/cedricmenec/asf-agentkit-qualification/actions/runs/40437506108) green on the exact head SHA. `finalize` and merge remain pending.** R3h local CAS/mutex fixtures remain in Git and CI but **are not MVP blockers**. ASF V3 controller/waves/global CAS belong to [ThreadStep's own backlog](https://github.com/cedricmenec/threadstep/issues/196); no cherry-pick or second CAS writer. Protected workflows, Apps, secrets, payments and releases need separately verified permissions and owner approvals.
 
-**Status (24 Oct 2026): offline R0/R1/R2a–R2d, R3a–R3e-02, R3f-01–04 and R3g-01–05 prototypes integrated on `main`; SEC-02a and SEC-02b-01 synthetic release checks, plus R5a-01/02/03, R5b-01 and R5b-02a read-only install/upgrade/PR publication previews and R3h-01/02/03/04 and R6a-01 offline handoff, versioned checkpoint-journal, disposable byte qualification and private Linux local CAS/lock fixtures integrated. NOT an installable, independently authenticated, attestable or released kit. Verify the latest refs/PRs/CI before relying on this dated status.**
+For a practical, non-paying installation replay, follow the [short qualification quickstart](docs/qualification-quickstart.md). It separates locally verified installation, real GitHub App workflow publication and CI from the still-unverified CLI App-JWT publication, `finalize` and sensitive merge gates.
+
+**Historical snapshot (24 Oct 2026, superseded):** the offline R0–R7 prototypes and synthetic release checks had been integrated, but the installable kit was not yet present. As of 31 Oct 2026, `main` contains development candidates for the OpenCode + OpenSpec kit, CLI installation/status/doctor/upgrade, and release-candidate checks. The installed source remains `user-pinned-git-object-unattested`; there is still no published production release, independent release provenance, or qualified install from an official release. Check current refs, PRs, checks and releases before relying on this status.
 
 This repository is intended to publish independently versioned, portable, manually-triggered agent kits for GitHub repositories. Initially it specifies:
 
@@ -34,8 +36,10 @@ effective GitHub admin setup has been qualified.
 an allowlisted GitHub App JWT/token path, one-repo token scope, exact base SHA,
 create-only Git data writes, new ordinary branch and **draft PR only**.
 See [controlled PR publication and approval boundaries](docs/ak-mvp-03-controlled-pr.md).
-All remote publication tests so far are mocks; no target repository has been
-modified or product workflow activated by this candidate.
+The CLI `install --pr` JWT publication path is still verified only by mocks.
+Separately, the manually triggered AgentKit workflow has published real
+OpenCode-generated changes to the qualification repository using its GitHub App;
+this does not qualify the CLI JWT path.
 
 - `schemas/`: provisional JSON Schema contracts for target configuration, installation lock, and release manifest.
 - `kits/`: historical metadata and synthetic examples plus the #88 **unqualified, uninstalled** workflow/runtime templates in `kits/opencode-openspec/templates/`.
