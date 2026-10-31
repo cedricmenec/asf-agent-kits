@@ -1,9 +1,11 @@
-# AK-MVP-02: local AgentKit CLI candidate, exact Git source
+# AK-MVP-02: AgentKit CLI, exact Git source
 
-Status: **unreleased and uninstalled outside disposable local fixtures**.
-This work is stacked on #93 (AK-MVP-01), and does not authorize any GitHub
-App installation, secret change, privileged workflow, model invocation or
-remote PR. No operational release or signature provenance is claimed.
+Status: **v1 is distributed as a GitHub tag/release plus a local clone pinned
+to the full source commit SHA**. The CLI does not authenticate the GitHub
+release, tag ruleset or publisher. The owner checks those controls and the
+manifest before publishing. The local lock retains its explicit
+`user-pinned-git-object-unattested` label. This keeps the first release manual
+and source-pinned, without claiming an automated signature service.
 
 ## Local invocation
 
@@ -13,7 +15,7 @@ From a pinned, locally checked-out AgentKit repository:
 python3 bin/asf-agentkit install \
   --repo example/qualification-repository \
   --checkout /path/to/ordinary/target-checkout \
-  --kit opencode-openspec --version 0.1.0 \
+  --kit opencode-openspec --version 1.0.0 \
   --source /path/to/asf-agent-kits-checkout \
   --source-commit YOUR_EXACT_40_HEX_COMMIT_SHA \
   --config kits/opencode-openspec/mvp-config.example.json --dry-run
@@ -22,7 +24,7 @@ python3 bin/asf-agentkit install \
 The config example must be edited **outside the target checkout** to match its
 actual GitHub repository, default branch, backlog path, check script, variable
 and secret names, and repository-scoped paid mutex. The CLI always requires
-the exact commit, never `latest`, a mutable tag, or a self-declared release.
+the exact commit, never `latest` or a moving branch.
 It reads the nine templates and a version declaration from Git **objects at
 that exact commit**, not dirty worktree files. It verifies the configured
 AgentKit source remote identity and exact version in the pinned object.
@@ -74,10 +76,12 @@ assumes release tags; it is deliberately not silently reinterpreted, because
 no AgentKit release tag exists yet. An existing v1 lock is refused until an
 explicit migration/review is implemented.
 
-In the first commit-based candidate, version `0.1.0` designates a development
-source version, not a publicly released artifact. An immutable source commit
-is necessary for reproducible bytes but does not itself prove an authorized
-publisher or protected release tag.
+The first production version is `1.0.0`, distributed from the repository
+source at `kits/opencode-openspec/v1.0.0`. The user checks the GitHub release,
+publisher, tag protections and manifest, resolves the tag to its full commit
+SHA, then passes that SHA to the local CLI. The CLI itself makes no network
+trust decision. The lock records the exact source commit and managed-file
+hashes while retaining the explicit `unattested` trust label.
 
 ## Non-paying proof and remaining gates
 
@@ -87,10 +91,8 @@ unmanaged collision, case alias, symlink, wrong commit/version, dirty/default
 branch, wrong repository remote, unsupported lock, and unchanged pinned blobs
 despite local source edits. No remote push, App, OpenRouter, OpenSpec or model.
 
-Before #89 can be marked complete: review the installation semantics and
-source trust contract, confirm CI on the exact SHA, and decide how the first
-trusted SemVer release is published. #90 then adds **explicit** GitHub draft
-PR publication with separate write permissions/approval gates, building on
-the optional read-only setup diagnostics introduced here. #91 covers a
-second repository, real OpenSpec runtime acceptance and an owner-approved
-paid pilot.
+For the first release, use the ordinary Git workflow in
+[`docs/first-release-v1.0.0.md`](first-release-v1.0.0.md). The optional
+App-JWT `install --pr` path, cryptographic publisher attestation, broader
+multi-repository qualification and a paid pilot remain separate follow-up
+work; they are not required for this manual source-pinned installation flow.

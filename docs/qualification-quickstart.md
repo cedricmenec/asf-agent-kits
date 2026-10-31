@@ -1,3 +1,11 @@
+# Qualification historique `opencode-openspec@0.1.0`
+
+Ce document conserve les commandes et preuves du pilote initial `0.1.0`.
+Pour publier puis installer la première version de production `1.0.0`, suivre
+le [guide de première release](first-release-v1.0.0.md).
+
+---
+
 # Installer ASF AgentKit OpenCode + OpenSpec sur un autre dépôt
 
 **Objectif :** équiper un dépôt GitHub contenant déjà une application

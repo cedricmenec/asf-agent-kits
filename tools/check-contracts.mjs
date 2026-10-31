@@ -22,11 +22,15 @@ const dirs = await readdir(path.join(rootDir, 'kits'));
 for (const dir of dirs) {
   const descriptor = JSON.parse(await readFile(path.join(rootDir, 'kits',dir,'kit.json'),'utf8'));
   const allowedStatus = dir === 'opencode-openspec'
-    ? ['design-only', 'runnable-local-template-unqualified']
+    ? ['runnable-local-template-qualified']
     : ['design-only'];
+  const expectedRelease = dir === 'opencode-openspec'
+    ? { version: '1.0.0', tag: 'kits/opencode-openspec/v1.0.0', distribution: 'user-pinned-git-commit' }
+    : null;
   if (descriptor.id !== dir || !allowedStatus.includes(descriptor.status) ||
-      descriptor.release !== null || descriptor.requiresControllerV3 !== false) {
-    throw new Error(`Kit ${dir}: metadata exceeds the non-released scope`);
+      JSON.stringify(descriptor.release) !== JSON.stringify(expectedRelease) ||
+      descriptor.requiresControllerV3 !== false) {
+    throw new Error(`Kit ${dir}: metadata differs from the approved release scope`);
   }
 }
-console.log(`Supplemental smoke checks passed (NOT a full schema validator): ${schemaFiles.length} provisional schemas, ${dirs.length} non-released kit descriptors, 1 example (no LLM execution)`);
+console.log(`Supplemental smoke checks passed (NOT a full schema validator): ${schemaFiles.length} provisional schemas, ${dirs.length} release-scoped kit descriptors, 1 example (no LLM execution)`);

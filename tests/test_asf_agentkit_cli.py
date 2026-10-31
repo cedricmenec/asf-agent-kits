@@ -43,7 +43,11 @@ class CliLocalCheckout(unittest.TestCase):
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(templates/name, dest)
         version = self.source/'kits/opencode-openspec/version.json'
-        shutil.copyfile(ROOT/'kits/opencode-openspec/version.json', version)
+        version.write_text(json.dumps({
+            'schemaVersion': 1, 'kitVersion': '0.1.0',
+            'distribution': 'user-pinned-git-commit',
+            'releaseStatus': 'development-unreleased',
+        }, sort_keys=True) + '\n')
         self.commit(self.source, 'pinned source v0.1.0')
         self.source_sha = cmd(self.source, 'git', 'rev-parse', 'HEAD')
 
@@ -122,6 +126,35 @@ class CliLocalCheckout(unittest.TestCase):
             bad_pin, bad_version,
         ):
             self.cli('install', args + ['--dry-run'], expected=3)
+        self.assertEqual(cmd(self.target, 'git', 'status', '--porcelain'), '')
+
+    def test_stable_1_0_0_source_is_installable_from_exact_commit(self):
+        version = self.source/'kits/opencode-openspec/version.json'
+        metadata = json.loads(version.read_text())
+        metadata.update({'kitVersion': '1.0.0', 'releaseStatus': 'stable'})
+        version.write_text(json.dumps(metadata, sort_keys=True) + '\n')
+        self.commit(self.source, 'stable source v1.0.0')
+        sha = cmd(self.source, 'git', 'rev-parse', 'HEAD')
+        args = self.baseargs.copy()
+        args[args.index('--version')+1] = '1.0.0'
+        args[args.index('--source-commit')+1] = sha
+        preview = self.cli('install', args + ['--dry-run'])
+        self.assertEqual(preview['status'], 'proposed')
+        self.assertEqual(preview['sourceCommitSha'], sha)
+        self.assertEqual(preview['sourceTrust'], 'user-pinned-git-object-unattested')
+        self.assertFalse(preview['releaseProvenanceVerified'])
+        self.assertEqual(cmd(self.target, 'git', 'status', '--porcelain'), '')
+
+    def test_unknown_release_status_is_refused(self):
+        version = self.source/'kits/opencode-openspec/version.json'
+        metadata = json.loads(version.read_text())
+        metadata['releaseStatus'] = 'published-without-gates'
+        version.write_text(json.dumps(metadata, sort_keys=True) + '\n')
+        self.commit(self.source, 'invalid release status')
+        sha = cmd(self.source, 'git', 'rev-parse', 'HEAD')
+        args = self.baseargs.copy()
+        args[args.index('--source-commit')+1] = sha
+        self.cli('install', args + ['--dry-run'], expected=3)
         self.assertEqual(cmd(self.target, 'git', 'status', '--porcelain'), '')
 
     def test_candidate_manifest_preview_is_bounded_and_not_release_trust(self):
