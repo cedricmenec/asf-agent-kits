@@ -25,10 +25,11 @@ export function allowed(phase, change, path) {
       /\.(?:pem|key|p12|pfx|log)$/.test(name) || forbidden.has(path)) return false;
   const plan = `openspec/changes/${change}/`;
   if (phase === 'plan') return path.startsWith(plan);
-  if (phase === 'finalize') {
+  if (phase === 'finalize' || phase === 'auto') {
     return path.startsWith('openspec/specs/') ||
       new RegExp(`^openspec/changes/archive/\\d{4}-\\d{2}-\\d{2}-${change}/`).test(path) ||
-      path.startsWith(plan);
+      path.startsWith(plan) ||
+      (phase === 'auto' && allowed('apply', change, path));
   }
   if (phase !== 'apply') return false;
   if (prefixes.some(p => path.startsWith(p)) ||
@@ -57,7 +58,7 @@ export function checkPaths(phase, change, entries) {
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
       // OpenSpec archive moves the active plan under changes/archive/.
-      if (phase !== 'finalize' || !file.startsWith('openspec/changes/' + change + '/')) {
+      if (!['finalize', 'auto'].includes(phase) || !file.startsWith('openspec/changes/' + change + '/')) {
         throw Error('Deleted path: ' + file);
       }
     }

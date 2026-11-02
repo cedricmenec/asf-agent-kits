@@ -23,7 +23,7 @@ from pathlib import Path
 name=Path(sys.argv[0]).name
 args=sys.argv[1:]
 with open(os.environ['MOCK_LOG'], 'a') as out:
-    out.write(name+' '+(' '.join(args[:4]))+'\\n')
+    out.write(name+' '+(' '.join(args[:7]))+'\\n')
 if os.environ.get('REQUIRE_ESBUILD') == '1' and not Path('node_modules/esbuild/package.json').is_file():
     sys.exit(91)
 change=Path('openspec/changes/ts-009')
@@ -46,10 +46,14 @@ if name == 'openspec':
     sys.exit(0)
 if name == 'opencode':
     if '--command' in args:
+        with open(os.environ['MOCK_LOG'], 'a') as out: out.write('opencode-phase sync\\n')
+        if os.environ.get('FAIL_OPENCODE_PHASE') == 'sync':
+            sys.exit(42)
         spec=Path('openspec/specs/demo/spec.md')
         spec.parent.mkdir(parents=True,exist_ok=True)
         spec.write_text('Canonical semantic sync output\\n')
     elif not (change/'proposal.md').exists():
+        with open(os.environ['MOCK_LOG'], 'a') as out: out.write('opencode-phase plan\\n')
         for file,content in {
             'proposal.md':'Proposal\\n', 'design.md':'Design\\n',
             'tasks.md':'## Implementation checklist\\n- [ ] Implement feature\\n',
@@ -58,6 +62,9 @@ if name == 'opencode':
             path=change/file;path.parent.mkdir(parents=True,exist_ok=True)
             path.write_text(content)
     else:
+        with open(os.environ['MOCK_LOG'], 'a') as out: out.write('opencode-phase apply\\n')
+        if os.environ.get('FAIL_OPENCODE_PHASE') == 'apply' and (change/'proposal.md').exists():
+            sys.exit(42)
         (change/'tasks.md').write_text('## Implementation checklist\\n- [x] Implement feature\\n')
         path=Path('src/new-feature.txt')
         path.parent.mkdir(parents=True,exist_ok=True)
@@ -213,7 +220,7 @@ class NonPayingPhaseFixture(unittest.TestCase):
             self.assertIn('openspec archive ts-009', calls)
             self.assertNotIn('gh ', calls)
 
-    def test_request_refuses_unapproved_paid_phase_before_network(self):
+    def test_request_refuses_invalid_actor_ref_attempt_phase_model_and_task_before_network(self):
         cfg = json.loads((ROOT/'kits/opencode-openspec/mvp-config.example.json').read_text())
         preview = render_mvp(ROOT, cfg)
         request = base64.b64decode(next(
@@ -221,17 +228,108 @@ class NonPayingPhaseFixture(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='mvp-denied-') as tmp:
             script = Path(tmp)/'request.mjs'
             script.write_bytes(request)
-            env = dict(os.environ, GITHUB_REPOSITORY=cfg['targetRepository'],
+            base = dict(os.environ, GITHUB_REPOSITORY=cfg['targetRepository'],
                        GITHUB_REPOSITORY_OWNER='example', GITHUB_ACTOR='example',
                        GITHUB_REF='refs/heads/main', GITHUB_EVENT_NAME='workflow_dispatch',
-                       GITHUB_RUN_ATTEMPT='1', PHASE='plan', PAID_APPROVAL='NO',
+                       GITHUB_RUN_ATTEMPT='1', PHASE='auto',
                        OPENCODE_MODEL='openrouter/deepseek/deepseek-v4.1-flash',
                        RAW_TASK_ID='9', GITHUB_OUTPUT=str(Path(tmp)/'output'))
-            result = subprocess.run(['node', str(script)], cwd=tmp, env=env,
-                                    capture_output=True, text=True)
+            cases = [
+                ({'GITHUB_ACTOR': 'other'}, 'Owner-only'),
+                ({'GITHUB_REF': 'refs/heads/feature'}, 'Owner-only'),
+                ({'GITHUB_RUN_ATTEMPT': '2'}, 'Owner-only'),
+                ({'PHASE': 'unknown'}, 'Unsupported phase'),
+                ({'OPENCODE_MODEL': 'unlisted/model'}, 'allowlist'),
+                ({'RAW_TASK_ID': '0'}, 'Invalid task ID'),
+            ]
+            for changes, message in cases:
+                env = dict(base, **changes)
+                result = subprocess.run(['node', str(script)], cwd=tmp, env=env,
+                                        capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0, changes)
+                self.assertIn(message, result.stderr, changes)
+                self.assertFalse((Path(tmp)/'output').exists(), changes)
+
+    def test_auto_runs_sequential_three_calls_and_stops_before_sync_on_apply_failure(self):
+        cfg = json.loads((ROOT/'kits/opencode-openspec/mvp-config.example.json').read_text())
+        preview = render_mvp(ROOT, cfg)
+        with tempfile.TemporaryDirectory(prefix='mvp-auto-') as tmp:
+            target = Path(tmp)/'target'
+            target.mkdir()
+            for item in preview['files']:
+                path = target/item['path']
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(base64.b64decode(item['contentBase64']))
+            (target/'openspec').mkdir()
+            (target/'openspec/config.yaml').write_text('schema: spec-driven\n')
+            (target/'package-lock.json').write_text('{}\n')
+            (target/'package.json').write_text('{"scripts":{"check":"true"}}\n')
+            task = target/'backlog/tasks/TS-009.md'
+            task.parent.mkdir(parents=True)
+            task.write_text('# Task 009\nBuild a safe feature.\n')
+            command(target, 'git', 'init', '-q')
+            command(target, 'git', 'add', '.')
+            command(target, 'git', '-c', 'user.name=Fixture',
+                    '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'initial fixture')
+            bin_dir = Path(tmp)/'bin'
+            bin_dir.mkdir()
+            for name in ('npm', 'openspec', 'opencode'):
+                file = bin_dir/name
+                file.write_text(FAKE_BIN)
+                file.chmod(0o700)
+            runtime = target/'.asf/agentkit/runtime'
+            (Path(tmp)/'checklist.mjs').write_bytes((runtime/'checklist.mjs').read_bytes())
+            env = dict(os.environ, PATH=str(bin_dir)+os.pathsep+os.environ['PATH'],
+                       RUNNER_TEMP=str(tmp), MOCK_LOG=str(Path(tmp)/'calls.log'),
+                       GITHUB_REPOSITORY=cfg['targetRepository'], TASK_ID='TS-009',
+                       CHANGE_ID='ts-009', OPENCODE_MODEL='openrouter/deepseek/deepseek-v4.1-flash',
+                       PHASE='auto')
+            env.pop('OPENROUTER_API_KEY', None)
+            command(target, 'bash', str(runtime/'phase.sh'), env=env)
+            command(target, 'node', str(runtime/'scope.mjs'), 'all', 'auto', 'ts-009', env=env)
+            log = (Path(tmp)/'calls.log').read_text()
+            self.assertEqual(log.count('opencode run'), 3)
+            self.assertEqual([line for line in log.splitlines() if line.startswith('opencode-phase ')],
+                             ['opencode-phase plan', 'opencode-phase apply', 'opencode-phase sync'])
+            self.assertLess(log.index('openspec new change'), log.index('npm run check'))
+            self.assertIn('opencode run --auto --model', log)
+            self.assertIn('opencode run --auto --model openrouter/deepseek/deepseek-v4.1-flash --command opsx-sync ts-009', log)
+            self.assertTrue((target/'openspec/changes/archive/2026-10-24-ts-009/tasks.md').is_file())
+            command(target, 'git', 'add', '-A')
+            command(target, 'node', str(runtime/'scope.mjs'), 'staged', 'auto', 'ts-009', env=env)
+
+            # Repeat from a clean fixture and fail the paid apply call. The
+            # sequential shell must stop before OPSX sync and archive.
+            failing = Path(tmp)/'failing'
+            shutil.copytree(target, failing, ignore=shutil.ignore_patterns('.git', 'node_modules'))
+            shutil.rmtree(failing/'openspec/changes')
+            (failing/'openspec/changes').mkdir()
+            command(failing, 'git', 'init', '-q')
+            command(failing, 'git', 'add', '.')
+            command(failing, 'git', '-c', 'user.name=Fixture', '-c',
+                    'user.email=fixture@example.invalid', 'commit', '-qm', 'initial fixture')
+            fail_env = dict(env, MOCK_LOG=str(Path(tmp)/'fail-calls.log'), FAIL_OPENCODE_PHASE='apply')
+            result = subprocess.run(['bash', str(runtime/'phase.sh')], cwd=failing,
+                                    env=fail_env, capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn('approval is missing', result.stderr)
-            self.assertFalse((Path(tmp)/'output').exists())
+            failed_log = (Path(tmp)/'fail-calls.log').read_text()
+            self.assertEqual(failed_log.count('opencode run'), 2)
+            self.assertNotIn('--command opsx-sync', failed_log)
+            self.assertNotIn('openspec archive', failed_log)
+
+            failing_sync = Path(tmp)/'failing-sync'
+            command(tmp, 'git', 'clone', '--local', str(target), str(failing_sync))
+            command(failing_sync, 'git', 'reset', '--hard', 'HEAD')
+            command(failing_sync, 'git', 'clean', '-fdx')
+            sync_env = dict(env, MOCK_LOG=str(Path(tmp)/'sync-calls.log'), FAIL_OPENCODE_PHASE='sync')
+            result = subprocess.run(['bash', str(runtime/'phase.sh')], cwd=failing_sync,
+                                    env=sync_env, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            sync_log = (Path(tmp)/'sync-calls.log').read_text()
+            self.assertEqual(sync_log.count('opencode run'), 3)
+            self.assertIn('opencode-phase sync', sync_log)
+            self.assertNotIn('openspec archive', sync_log)
+            self.assertTrue((failing_sync/'openspec/changes/ts-009/tasks.md').is_file())
 
 
 if __name__ == '__main__':

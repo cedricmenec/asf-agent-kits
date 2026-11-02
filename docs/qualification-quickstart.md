@@ -94,14 +94,19 @@ sur le dépôt de qualification, ou le workflow équivalent du dépôt cible,
 puis `Run workflow` sur `main` :
 
 - `task_id=AQ-009` (adapter à la tâche existante) ;
-- `phase=plan`, puis `apply` après revue ;
+- `phase=auto` par défaut exécute plan, apply et synchronisation OPSX dans
+  un seul run, soit jusqu'à trois appels OpenCode payants, sans plafond USD.
+  Choisir `plan`, `apply` ou `finalize` pour une seule phase ;
 - `model=openrouter/deepseek/deepseek-v4.1-flash-1017` ;
-- `paid_approval=I_AUTHORIZE_ONE_PAID_PHASE` **uniquement après
-  autorisation explicite de cette phase payante**.
+
+Le dispatch manuel du propriétaire et le choix de phase/modèle constituent
+l'action explicite au niveau du run. N'effectuer aucun dispatch sans décision
+de coût du propriétaire. Le formulaire ne demande plus de champ
+`paid_approval`.
 
 Ne pas relancer un job payant automatiquement. Le résultat attendu est
 une branche `agent/openspec/...`, une PR brouillon et une CI indépendante
-sur le SHA exact. Ni `finalize` ni la fusion ne sont automatiques.
+sur le SHA exact. Aucun retry payant ni auto-merge n'est installé.
 
 ## Preuves et limites du pilote
 

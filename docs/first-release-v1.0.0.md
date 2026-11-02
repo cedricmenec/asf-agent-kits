@@ -126,8 +126,10 @@ python3 agent-kits/bin/asf-agentkit doctor \
 Vérifie le diff, exécute les tests du dépôt, puis ouvre et fais relire une PR
 Git ordinaire. L'installation locale ne requiert pas d'App GitHub. L'exécution
 future du workflow peut exiger que le propriétaire configure les secrets,
-l'App et les permissions adaptés au dépôt cible. Toute phase OpenCode
-potentiellement payante reste soumise à son autorisation explicite.
+l'App et les permissions adaptés au dépôt cible. Le dispatch manuel du
+propriétaire sélectionne explicitement phase et modèle ; `auto` peut entraîner
+trois appels OpenCode payants (plan, apply, synchronisation OPSX), sans plafond
+USD. Aucun workflow n'est lancé par l'installation.
 
 ## Limites connues de la V1
 

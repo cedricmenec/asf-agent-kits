@@ -12,7 +12,7 @@ For the production release sequence and the install commands for another reposit
 
 This repository is intended to publish independently versioned, portable, manually-triggered agent kits for GitHub repositories. Initially it specifies:
 
-- `opencode-openspec`: the standard OpenCode + OpenSpec profile, with manual `plan`, `apply`, `auto`, and `finalize` phases (not yet implemented in R0).
+- `opencode-openspec`: the standard OpenCode + OpenSpec profile, with manual `auto`, `plan`, `apply`, and `finalize` phases. `auto` runs plan, apply, OPSX sync, and archive sequentially in one dispatch.
 - `opencode-direct`: an optional independent OpenCode profile, disabled by default (not yet implemented in R0).
 
 The product scope is a portable, manually triggered OpenCode + OpenSpec kit. ASF Backlog Orchestrator V1, ASF Controller V3, waves, global CAS and automatic paid retries are excluded from this distribution. The detailed implementation inventory below is a historical snapshot, superseded by the current status above.

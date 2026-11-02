@@ -34,10 +34,7 @@ export function checkRequest(env) {
       env.GITHUB_RUN_ATTEMPT !== '1') {
     throw Error('Owner-only, default-branch, first-attempt manual dispatch required');
   }
-  if (!['plan', 'apply', 'finalize'].includes(env.PHASE)) throw Error('Unsupported phase');
-  if (env.PAID_APPROVAL !== 'I_AUTHORIZE_ONE_PAID_PHASE') {
-    throw Error('Explicit one-phase paid approval is missing');
-  }
+  if (!['auto', 'plan', 'apply', 'finalize'].includes(env.PHASE)) throw Error('Unsupported phase');
   if (!models.includes(env.OPENCODE_MODEL)) throw Error('Model not on fixed allowlist');
   const taskId = normalizeTask(env.RAW_TASK_ID);
   const taskPath = `${config.directory}/${taskId}.md`;
@@ -49,8 +46,8 @@ export function checkRequest(env) {
     { encoding: 'utf8', timeout: 20000 }).trim();
   const tip = branchObservation ? branchObservation.split('\t')[0] : '';
   if (tip && !/^[0-9a-f]{40}$/.test(tip)) throw Error('Malformed branch observation');
-  if (!tip && env.PHASE !== 'plan') throw Error('Existing plan branch required');
-  if (tip && env.PHASE === 'plan') throw Error('Plan branch exists; review it before a new paid run');
+  if (!tip && !['plan', 'auto'].includes(env.PHASE)) throw Error('Existing plan branch required');
+  if (tip && ['plan', 'auto'].includes(env.PHASE)) throw Error('Agent branch exists; inspect it and explicitly resume with apply/finalize');
   return { taskId, taskPath, branch, change: taskId.toLowerCase(),
     observedTip: tip || 'absent' };
 }
