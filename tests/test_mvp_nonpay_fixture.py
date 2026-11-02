@@ -96,7 +96,7 @@ class NonPayingPhaseFixture(unittest.TestCase):
         shell = base64.b64decode(next(f['contentBase64'] for f in preview['files']
             if f['path'] == '.asf/agentkit/runtime/phase.sh')).decode()
         install = shell.index('npm ci --ignore-scripts')
-        self.assertLess(install, shell.index('if [[ "$PHASE" == plan ]]'))
+        self.assertLess(install, shell.index('if [[ "$PHASE" == plan || "$PHASE" == auto ]]'))
         self.assertLess(install, shell.index('openspec init --tools'))
         self.assertEqual(shell.count('npm ci --ignore-scripts'), 1)
         self.assertEqual(shell.count('npm run check'), 4)  # apply prompt + 3 actual phases
