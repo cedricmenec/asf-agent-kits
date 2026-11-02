@@ -5,8 +5,8 @@
   "manualPhases": ["auto", "plan", "apply", "finalize"],
   "requiresControllerV3": false,
   "release": {
-    "version": "1.0.0",
-    "tag": "kits/opencode-openspec/v1.0.0",
+    "version": "1.1.0",
+    "tag": "kits/opencode-openspec/v1.1.0",
     "distribution": "user-pinned-git-commit"
   }
 }

@@ -1,8 +1,10 @@
 # Qualification historique `opencode-openspec@0.1.0`
 
 Ce document conserve les commandes et preuves du pilote initial `0.1.0`.
-Pour publier puis installer la première version de production `1.0.0`, suivre
-le [guide de première release](first-release-v1.0.0.md).
+Le guide de la première release `1.0.0` reste disponible dans
+[`first-release-v1.0.0.md`](first-release-v1.0.0.md). Pour installer ou mettre
+à niveau vers la version courante `1.1.0`, suivre les
+[notes de release](release-v1.1.0.md).
 
 ---
 

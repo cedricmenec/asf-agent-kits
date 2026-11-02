@@ -1,14 +1,14 @@
 # ASF Agent Kits
 
-## Current release status (31 October 2026)
+## Current release status (2 November 2026)
 
-**Release target:** `opencode-openspec` `1.0.0`, distributed from the immutable GitHub tag `kits/opencode-openspec/v1.0.0` and installed from a local checkout pinned to the tag's full commit SHA. The version and release-manifest builder are prepared on the first-release branch; the release is not published until that change is merged, the exact-SHA CI is green, and the owner performs the final manual review. This v1 flow intentionally uses GitHub's tag/release controls and human verification. The local install lock remains explicitly unattested; the CLI does not claim to authenticate GitHub release provenance.
+**Current release:** `opencode-openspec` `1.1.0`, distributed from the immutable GitHub tag `kits/opencode-openspec/v1.1.0` and installed from a local checkout pinned to the tag's full commit SHA. This release adds the sequential manual `auto` phase. Its cost statement and upgrade notes are in [release-v1.1.0.md](docs/release-v1.1.0.md). The v1 flow uses GitHub's tag/release controls and human verification. The local install lock remains explicitly unattested; the CLI does not claim to authenticate GitHub release provenance.
 
 **Qualification evidence:** the AQ-009 OpenCode + OpenSpec `plan` and `apply` phases produced [PR #4](https://github.com/cedricmenec/asf-agentkit-qualification/pull/4), with [independent CI](https://github.com/cedricmenec/asf-agentkit-qualification/actions/runs/40437506108) green on its exact head SHA. Local qualification covers non-overwriting install, conflict refusal, upgrade preview, rollback and Git revert. `finalize`, automated release verification and the optional App-JWT install PR path are not part of this first manual release. No new paid run is authorized by this status.
 
-For the production release sequence and the install commands for another repository, follow the [first-release guide](docs/first-release-v1.0.0.md). Historical `0.1.0` pilot evidence remains in the [qualification quickstart](docs/qualification-quickstart.md).
+For the original `1.0.0` publication procedure and installation baseline, see the [first-release guide](docs/first-release-v1.0.0.md). For current release details and migration guidance, see [release 1.1.0](docs/release-v1.1.0.md) and the [qualification quickstart](docs/qualification-quickstart.md).
 
-**Historical snapshot (24 Oct 2026, superseded):** the offline R0–R7 prototypes and synthetic release checks had been integrated, but the installable kit was not yet present. As of 31 Oct 2026, `main` contains development candidates for the OpenCode + OpenSpec kit, CLI installation/status/doctor/upgrade, and release-candidate checks. The installed source remains `user-pinned-git-object-unattested`; there is still no published production release, independent release provenance, or qualified install from an official release. Check current refs, PRs, checks and releases before relying on this status.
+**Historical snapshot (31 October 2026, superseded):** at that time, `main` contained the OpenCode + OpenSpec kit, CLI installation/status/doctor/upgrade, and release-candidate checks, but no published production release or qualified installation from an official release. Current `1.1.0` installs still use the explicit `user-pinned-git-object-unattested` trust label; the kit does not independently authenticate release provenance.
 
 This repository is intended to publish independently versioned, portable, manually-triggered agent kits for GitHub repositories. Initially it specifies:
 
