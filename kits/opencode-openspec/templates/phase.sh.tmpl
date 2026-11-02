@@ -6,7 +6,7 @@ task_file="@@TASKDIRECTORY@@/$TASK_ID.md"
 change="openspec/changes/$CHANGE_ID"
 test -s "$task_file"
 test -s openspec/config.yaml
-test "$PHASE" = plan || test "$PHASE" = apply || test "$PHASE" = finalize
+test "$PHASE" = auto || test "$PHASE" = plan || test "$PHASE" = apply || test "$PHASE" = finalize
 
 export OPENSPEC_NO_UPDATE_CHECK=1
 export OPENSPEC_NO_ANIMATION=1
@@ -20,7 +20,7 @@ test -s .opencode/skills/openspec-sync-specs/SKILL.md
 # never the archive/spec directories or any other user/model output.
 printf '\n/.opencode/\n/.agents/\n/openspec/changes/archive/.gitkeep\n/openspec/specs/.gitkeep\n' >> .git/info/exclude
 
-if [[ "$PHASE" == plan ]]; then
+if [[ "$PHASE" == plan || "$PHASE" == auto ]]; then
   test ! -d "$change" || { echo '::error::Change already exists'; exit 1; }
   openspec new change "$CHANGE_ID" --schema spec-driven
   {
@@ -38,7 +38,9 @@ if [[ "$PHASE" == plan ]]; then
   openspec validate "$CHANGE_ID" --strict --no-interactive
   node "$RUNNER_TEMP/checklist.mjs" "$change/tasks.md"
   npm run @@CHECKSCRIPT@@
-elif [[ "$PHASE" == apply ]]; then
+fi
+
+if [[ "$PHASE" == apply || "$PHASE" == auto ]]; then
   test -s "$change/tasks.md"
   openspec validate "$CHANGE_ID" --strict --no-interactive
   node "$RUNNER_TEMP/checklist.mjs" "$change/tasks.md"
@@ -59,7 +61,9 @@ elif [[ "$PHASE" == apply ]]; then
   fi
   npm run @@CHECKSCRIPT@@
   openspec validate "$CHANGE_ID" --strict --no-interactive
-else
+fi
+
+if [[ "$PHASE" == finalize || "$PHASE" == auto ]]; then
   test -s "$change/tasks.md"
   node "$RUNNER_TEMP/checklist.mjs" "$change/tasks.md"
   grep -Eq '^[[:space:]]*-[[:space:]]+\[[xX]\]' "$change/tasks.md"

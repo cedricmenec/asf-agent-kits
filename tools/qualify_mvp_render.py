@@ -46,6 +46,10 @@ def qualify(config, actionlint=None):
             "assert.equal(allowed('apply', c, '.env'), false);\n"
             "assert.equal(allowed('finalize', c, 'openspec/specs/new/spec.md'), true);\n"
             "assert.equal(allowed('finalize', c, '.github/workflows/evil.yml'), false);\n"
+            "assert.equal(allowed('auto', c, 'openspec/changes/' + c + '/tasks.md'), true);\n"
+            "assert.equal(allowed('auto', c, 'openspec/specs/new/spec.md'), true);\n"
+            "assert.equal(allowed('auto', c, 'src/product.mjs'), true);\n"
+            "assert.equal(allowed('auto', c, '.github/workflows/evil.yml'), false);\n"
         )
         subprocess.run(['node', '--input-type=module', '-e', smoke], check=True)
         return len(preview['files'])

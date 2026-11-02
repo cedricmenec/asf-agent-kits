@@ -2,7 +2,7 @@
   "id": "opencode-openspec",
   "status": "runnable-local-template-qualified",
   "defaultEnabled": true,
-  "manualPhases": ["plan", "apply", "finalize"],
+  "manualPhases": ["auto", "plan", "apply", "finalize"],
   "requiresControllerV3": false,
   "release": {
     "version": "1.0.0",

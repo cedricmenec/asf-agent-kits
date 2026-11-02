@@ -1,7 +1,8 @@
 # Generated from ASF AgentKit. Do not activate before manual GitHub setup/review.
-# Manual, first-attempt, owner-only, one paid phase per explicit authorization.
+# Manual, first-attempt, owner-only. The selected phase explicitly determines
+# the potential paid work; auto runs three sequential OpenCode calls.
 # OpenCode never receives GitHub App publication credentials.
-name: AgentKit OpenSpec (manual)
+name: AgentKit OpenSpec (manual, staged or auto)
 
 on:
   workflow_dispatch:
@@ -11,11 +12,11 @@ on:
         required: true
         type: string
       phase:
-        description: 'One paid phase; no auto/retry'
+        description: 'auto: 3 paid OpenCode calls (plan, apply, OPSX sync); no USD cap'
         required: true
         type: choice
-        default: plan
-        options: [plan, apply, finalize]
+        default: auto
+        options: [auto, plan, apply, finalize]
       model:
         description: 'Explicit allowlisted OpenRouter model'
         required: true
@@ -25,10 +26,6 @@ on:
           - openrouter/deepseek/deepseek-v4.1-flash
           - openrouter/deepseek/deepseek-v4.1-flash-1017
           - openrouter/z-ai/glm-5.3-flash
-      paid_approval:
-        description: 'For THIS run type I_AUTHORIZE_ONE_PAID_PHASE'
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -58,7 +55,6 @@ jobs:
           RAW_TASK_ID: ${{ inputs.task_id }}
           PHASE: ${{ inputs.phase }}
           OPENCODE_MODEL: ${{ inputs.model }}
-          PAID_APPROVAL: ${{ inputs.paid_approval }}
           APP_ID_PRESENT: ${{ vars.@@APPIDVAR@@ }}
           APP_PRIVATE_KEY_PRESENT: ${{ secrets.@@APPPRIVATEKEYSECRET@@ }}
           PROVIDER_KEY_PRESENT: ${{ secrets.@@OPENROUTERSECRET@@ }}
@@ -123,7 +119,7 @@ jobs:
           test "$(opencode --version)" = 1.19.0
       - name: Configure trusted model policy
         run: node "$RUNNER_TEMP/model-policy.mjs"
-      - name: Execute exactly one authorized OpenSpec phase
+      - name: Execute the selected OpenSpec phase or sequence
         shell: bash
         run: bash "$RUNNER_TEMP/phase.sh"
       - name: Verify model changes and create untrusted patch artifact

@@ -11,8 +11,11 @@ This is a deployed instruction file, not evidence of completion or consent.
   the kit never writes or displays them.
 - Audit GitHub Settings protection/required CI independently. Do not infer
   applied rules from checked-in configuration.
-- Every workflow dispatch may use paid model calls. The repository owner must
-  explicitly type `I_AUTHORIZE_ONE_PAID_PHASE` for EACH first-attempt phase.
+- The owner-only `workflow_dispatch` is the explicit run-level action. Review
+  the selected phase and model before dispatch: default `auto` can make three
+  paid OpenCode calls (plan, apply, OPSX sync), with no USD cap. `plan`, `apply`
+  and `finalize` each select their own single phase. The former
+  `paid_approval` text input is not used.
 - Do not re-run a failed paid job. Inspect the remote branch, PR and provider
   usage first; a later phase requires a new authorization.
 - Keep every resulting PR in draft until independent CI at its exact SHA and
