@@ -119,7 +119,7 @@ jobs:
           test "$(opencode --version)" = 1.19.0
       - name: Configure trusted model policy
         run: node "$RUNNER_TEMP/model-policy.mjs"
-      - name: Execute exactly one authorized OpenSpec phase
+      - name: Execute the selected OpenSpec phase or sequence
         shell: bash
         run: bash "$RUNNER_TEMP/phase.sh"
       - name: Verify model changes and create untrusted patch artifact
