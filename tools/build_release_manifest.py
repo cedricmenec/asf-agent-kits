@@ -15,6 +15,7 @@ RELEASE_PATHS = (
     "bin/asf-agentkit",
     "docs/ak-mvp-02-cli.md",
     "docs/first-release-v1.0.0.md",
+    "docs/release-v1.1.0.md",
     "docs/qualification-quickstart.md",
     "kits/opencode-openspec/kit.json",
     "kits/opencode-openspec/mvp-config.example.json",

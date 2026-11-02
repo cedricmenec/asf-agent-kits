@@ -46,11 +46,11 @@ class BuildReleaseManifestTests(unittest.TestCase):
         first = build_release_manifest(self.source, self.sha)
         second = build_release_manifest(self.source, self.sha)
         self.assertEqual(first, second)
-        self.assertEqual(first['kitVersion'], '1.0.0')
-        self.assertEqual(first['releaseTag'], 'kits/opencode-openspec/v1.0.0')
+        self.assertEqual(first['kitVersion'], '1.1.0')
+        self.assertEqual(first['releaseTag'], 'kits/opencode-openspec/v1.1.0')
         self.assertEqual(first['sourceCommitSha'], self.sha)
         self.assertEqual({x['path'] for x in first['artifacts']}, set(RELEASE_PATHS))
-        self.assertEqual(len(first['artifacts']), 27)
+        self.assertEqual(len(first['artifacts']), 28)
         self.assertTrue(all(len(x['sha256']) == 64 for x in first['artifacts']))
 
     def test_development_source_and_wrong_remote_are_refused(self):
