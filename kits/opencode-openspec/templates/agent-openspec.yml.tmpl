@@ -204,7 +204,7 @@ jobs:
           if [[ -z "$existing" ]]; then
             gh pr create --repo "$GITHUB_REPOSITORY" --draft --base "$DEFAULT_BRANCH" --head "$AGENT_BRANCH" \
               --title "OpenSpec: $TASK_ID" \
-          --body "Phase $PHASE. Independent CI and manual acceptance required. No auto-merge or operational approval is implied."
+              --body "Phase $PHASE. Independent CI and manual acceptance required. No auto-merge or operational approval is implied."
           else
             echo "Existing draft/review PR #$existing updated; no merge requested."
           fi
