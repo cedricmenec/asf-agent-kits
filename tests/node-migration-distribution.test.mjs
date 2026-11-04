@@ -23,3 +23,23 @@ test('all maintained execution pins select the same reviewed Node LTS',()=>{
  for(const p of ['.github/workflows/ci.yml','kits/opencode-openspec/templates/agent-openspec.yml.tmpl']){const s=fs.readFileSync(path.join(ROOT,p),'utf8');assert.ok(s.includes("node-version: '26.13.0'"));assert.equal(s.includes('setup-python'),false);}
 });
 for(const argv of [['bogus'],['install','--unknown'],['status','--repo','example/repo','--checkout','missing','--apply']])test('CLI returns refusal for invalid invocation '+argv.join(' '),()=>{const r=spawnSync(process.execPath,[path.join(ROOT,'bin/asf-agentkit'),...argv],{encoding:'utf8'});assert.equal(r.status,3);assert.equal(r.stdout,'');assert.ok(r.stderr.startsWith('ASF-AgentKit REFUSED: '));});
+
+test('npm engine policy rejects an incompatible runtime and accepts supported Node 26',()=>{
+ assert.equal(fs.readFileSync(path.join(ROOT,'.npmrc'),'utf8').trim(),'engine-strict=true');
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'asf-engine-policy-'));
+ try{
+  fs.copyFileSync(path.join(ROOT,'.npmrc'),path.join(root,'.npmrc'));
+  const env={...process.env};
+  for(const key of Object.keys(env))if(/^npm_config_engine_strict$/i.test(key))delete env[key];
+  const install=engine=>{
+   fs.writeFileSync(path.join(root,'package.json'),JSON.stringify({name:'asf-engine-policy-fixture',version:'1.0.0',private:true,engines:{node:engine}}));
+   return spawnSync('npm',['install','--package-lock-only','--ignore-scripts','--offline','--no-audit','--no-fund'],{cwd:root,env,encoding:'utf8',timeout:30000});
+  };
+  const denied=install('<26');
+  assert.notEqual(denied.status,0,'npm must reject the incompatible engine');
+  assert.match(denied.stderr,/EBADENGINE/);
+  const accepted=install('>=26.13.0 <27');
+  assert.equal(accepted.status,0,accepted.stderr);
+  assert.equal(strictFile(path.join(root,'package-lock.json')).packages[''].engines.node,'>=26.13.0 <27');
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});

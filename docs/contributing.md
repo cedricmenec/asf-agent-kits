@@ -15,7 +15,7 @@ The public user path is the Node.js CLI plus the OpenCode/OpenSpec workflow temp
 
 ## Validate a change
 
-Use Node.js 26.13.0 LTS. Install the pinned npm dependencies, then run the non-paying repository checks.
+Use Node.js 26.13.0 LTS, pinned in .nvmrc and CI. The package supports >=26.13.0 <27; the project .npmrc enables engine-strict so npm rejects incompatible runtimes. Install the pinned npm dependencies, then run the non-paying repository checks.
 
 ```bash
 npm ci --ignore-scripts
