@@ -8,7 +8,7 @@ import {
   hash,
 } from "./node/common.mjs";
 import { requestJson, ReadUnavailable } from "./asf_agentkit_github_read.mjs";
-import { profile } from "./render_mvp_kit.mjs";
+import { profile, profile_lock_path, LEGACY_LOCK } from "./render_mvp_kit.mjs";
 export const BRANCH =
   /^asf-agentkit\/install-[a-z0-9](?:[a-z0-9-]{0,45}[a-z0-9])?$/;
 export class PublishRefused extends Error {}
@@ -234,12 +234,17 @@ export async function publish_draft(
   planSha,
   files,
   lockBytes,
+  lockPath = LEGACY_LOCK,
 ) {
   requireThat(
     HEX.test(approved || "") && approved === planSha,
     "Exact approved dry-run digest required",
   );
   const lock = strictParse(lockBytes);
+  requireThat(
+    lockPath === LEGACY_LOCK || lockPath === profile_lock_path(lock.kitId),
+    "Profile lock path/identity mismatch",
+  );
   const allowed = profile(lock.kitId).files.map((x) => x[1]);
   requireThat(
     object(files) &&
@@ -257,7 +262,7 @@ export async function publish_draft(
       allowed.every((p) => lock.managedFiles[p] === hash(files[p])),
     "Source lock/bytes mismatch",
   );
-  const all = { ...files, ".asf/agentkit.lock.json": lockBytes };
+  const all = { ...files, [lockPath]: lockBytes };
   let newSha, pr;
   try {
     const base = await remote_preflight(

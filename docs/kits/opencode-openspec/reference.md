@@ -86,3 +86,7 @@ Task checkboxes must describe executable implementation work. Put manual accepta
 ## Continue
 
 [Install](install.md) · [Update and rollback](update.md) · [Documentation index](../../README.md)
+
+## Co-installation since 1.3.0
+
+The CLI supports several profiles per repository, with independently owned files and locks. `status` and `doctor` accept optional `--kit`. See [multiple profiles](../../multi-profile-installation.md) for compatibility, shared mutex and upgrade behavior.

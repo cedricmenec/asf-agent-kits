@@ -80,6 +80,12 @@ export const DIRECT_FILES = [
   ]),
   ["manual-acceptance.md.tmpl", ".asf/agentkit/direct/manual-acceptance.md"],
 ];
+export const KIT_IDS = ["opencode-openspec", "opencode-direct"];
+export const LEGACY_LOCK = ".asf/agentkit.lock.json";
+export function profile_lock_path(kit) {
+  profile(kit);
+  return ".asf/agentkit/locks/" + kit + ".json";
+}
 export function profile(kit = "opencode-openspec") {
   requireThat(
     ["opencode-openspec", "opencode-direct"].includes(kit),

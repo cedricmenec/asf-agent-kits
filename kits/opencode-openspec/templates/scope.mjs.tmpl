@@ -5,7 +5,7 @@ import { lstatSync } from 'node:fs';
 
 const forbidden = new Set(['AGENTS.md', 'ChatGPT.md', 'opencode.json',
   'openspec/config.yaml', '.gitmodules', '.gitattributes', '.gitconfig',
-  '.npmrc', '.netrc']);
+  '.npmrc', '.netrc', '.asf/agentkit.lock.json']);
 const prefixes = ['.github/', '.asf/agentkit/', '.agents/', '.opencode/',
   'backlog/', 'docs/factory/'];
 
