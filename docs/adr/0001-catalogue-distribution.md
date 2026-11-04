@@ -1,4 +1,6 @@
-# ADR-0001: multi-kit catalogue and vendored deployment
+# ADR-0001: catalogue distribution
+
+This preserved R0 proposal explains the original distribution choice. Its status remains proposed. Names and runtime details below are historical; use the current user guides for installation. No acceptance decision is added by this documentation work.
 
 Status: **proposed for owner review**, R0.
 

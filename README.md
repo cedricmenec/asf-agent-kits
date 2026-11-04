@@ -1,95 +1,69 @@
 # ASF Agent Kits
 
-## Current release status (2 November 2026)
+**Portable agent workflows for your GitHub repository. Start with one task, keep a written spec, and review the result in a pull request.**
 
-**Current release:** `opencode-openspec` `1.1.0`, distributed from the immutable GitHub tag `kits/opencode-openspec/v1.1.0` and installed from a local checkout pinned to the tag's full commit SHA. This release adds the sequential manual `auto` phase. Its cost statement and upgrade notes are in [release-v1.1.0.md](docs/release-v1.1.0.md). The v1 flow uses GitHub's tag/release controls and human verification. The local install lock remains explicitly unattested; the CLI does not claim to authenticate GitHub release provenance.
+ASF Agent Kits packages coding workflows that you can install and version in your own repository. The first published kit, OpenCode + OpenSpec, runs an agent on GitHub Actions and turns a backlog task into a draft pull request.
 
-**Qualification evidence:** the AQ-009 OpenCode + OpenSpec `plan` and `apply` phases produced [PR #4](https://github.com/cedricmenec/asf-agentkit-qualification/pull/4), with [independent CI](https://github.com/cedricmenec/asf-agentkit-qualification/actions/runs/40437506108) green on its exact head SHA. Local qualification covers non-overwriting install, conflict refusal, upgrade preview, rollback and Git revert. `finalize`, automated release verification and the optional App-JWT install PR path are not part of this first manual release. No new paid run is authorized by this status.
+![One task becomes a spec, code, checks and a draft PR on GitHub, ready for human review.](assets/illustrations/opencode-openspec-option-a.png)
 
-For the original `1.0.0` publication procedure and installation baseline, see the [first-release guide](docs/first-release-v1.0.0.md). For current release details and migration guidance, see [release 1.1.0](docs/release-v1.1.0.md) and the [qualification quickstart](docs/qualification-quickstart.md).
+## Why use it?
 
-**Historical snapshot (31 October 2026, superseded):** at that time, `main` contained the OpenCode + OpenSpec kit, CLI installation/status/doctor/upgrade, and release-candidate checks, but no published production release or qualified installation from an official release. Current `1.1.0` installs still use the explicit `user-pinned-git-object-unattested` trust label; the kit does not independently authenticate release provenance.
+Coding agents can move fast while losing sight of the original request. A written spec gives the work a stable reference. A defined workflow adds checks, traceable changes and clear review points.
 
-This repository is intended to publish independently versioned, portable, manually-triggered agent kits for GitHub repositories. Initially it specifies:
+OpenSpec structures the goal, design, requirements and implementation steps. OpenCode writes the change. GitHub runs the workflow remotely. Your tests, independent CI and human review check the result.
 
-- `opencode-openspec`: the standard OpenCode + OpenSpec profile, with manual `auto`, `plan`, `apply`, and `finalize` phases. `auto` runs plan, apply, OPSX sync, and archive sequentially in one dispatch.
-- `opencode-direct`: an optional independent OpenCode profile, disabled by default (not yet implemented in R0).
+The illustration shows the published OpenCode + OpenSpec path. The catalogue can hold other workflows.
 
-The product scope is a portable, manually triggered OpenCode + OpenSpec kit. ASF Backlog Orchestrator V1, ASF Controller V3, waves, global CAS and automatic paid retries are excluded from this distribution. The detailed implementation inventory below is a historical snapshot, superseded by the current status above.
+## Choose a kit
 
-## Historical technical inventory (snapshot: 24 October 2026, superseded)
+| Kit | Status | Use |
+| --- | --- | --- |
+| OpenCode + OpenSpec | Published: 1.1.0 | Work from a spec, implement, check and review |
+| OpenCode Direct | Planned profile; no executable release | Intended for direct agent work without the full OpenSpec cycle |
 
-**AK-MVP-01 #88 / merged PR #93:** A real manual OpenCode+OpenSpec template
-candidate is renderable and smoke-testable without payment using
-[`tools/render_mvp_kit.py`](tools/render_mvp_kit.py) and
-[the extraction audit](docs/ak-mvp-01-extraction.md). This is not a trusted
-release, installation, activated workflow or live GitHub/App qualification.
-The TS-059/Node 22 devDependency regression is covered in CI.
+Start with [Overview](docs/kits/opencode-openspec/overview.md). See [Overview and availability](docs/kits/opencode-direct/overview.md) for the second profile.
 
-**AK-MVP-02 #89 candidate (stacked development branch):** a real local
-`bin/asf-agentkit` entry point now supports exact-commit Git source rendering,
-`install --dry-run`, explicit create-only branch apply, local `status`,
-`doctor` and `upgrade --dry-run`. See
-[CLI scope, commands and trust limits](docs/ak-mvp-02-cli.md). This remains a
-development candidate: no released distribution, remote PR publisher or
-effective GitHub admin setup has been qualified.
+## Get started
 
-**AK-MVP-03 #90 candidate:** explicit digest-confirmed `install --pr` with
-an allowlisted GitHub App JWT/token path, one-repo token scope, exact base SHA,
-create-only Git data writes, new ordinary branch and **draft PR only**.
-See [controlled PR publication and approval boundaries](docs/ak-mvp-03-controlled-pr.md).
-The CLI `install --pr` JWT publication path is still verified only by mocks.
-Separately, the manually triggered AgentKit workflow has published real
-OpenCode-generated changes to the qualification repository using its GitHub App;
-this does not qualify the CLI JWT path.
+You need an existing Node.js project with a lockfile, tests, OpenSpec context, a task backlog and GitHub Actions.
 
-- `schemas/`: provisional JSON Schema contracts for target configuration, installation lock, and release manifest.
-- `kits/`: historical metadata and synthetic examples plus the #88 **unqualified, uninstalled** workflow/runtime templates in `kits/opencode-openspec/templates/`.
-- `core/`: consultative manual policy, GitHub read gates and R3e-02 synthetic host preflight; none authenticates a real GitHub App or authorizes execution.
-- `tools/validate_contracts.py`: **formal Draft 2020-12** JSON Schema verification with independent semantic checks.
-- `tools/check-contracts.mjs`: supplemental R0 smoke checks; **not** the authority for schema conformance.
-- `tests/fixtures/`: positive and negative JSON fixtures for all three contract types.
-- `tools/plan_install.py`: R2a **read-only**, deterministic `status` and `plan` using synthetic candidate manifests; see `docs/r2a-planner.md`. It cannot install a kit or attest a GitHub release.
-- `tools/plan_merge.py`: R2b read-only three-way preview, no apply, source provenance unverified.
-- `tools/build_candidate.py`: R2c read-only canonical JSON release-candidate generator with SHA-256 of local selected artifacts, no remote verification; see `docs/r2c-candidate-builder.md`.
-- `tools/render_templates.py`, `compose_preview.py`, `plan_rendered_preview.py`, `plan_ownership.py`: R2d-01 to R2d-04 deterministic, non-writing previews. They detect conflicts, but do not prove source authenticity or provide a safe installer.
-- `tools/render_mvp_kit.py` and `qualify_mvp_render.py`: #88 destination allowlist (including one workflow), nine runtime/instruction templates, byte/parse checks and mocked non-paying plan/apply/finalize qualification; not a source-verified installer.
-- `core/manual-policy.mjs`, `github-gates.mjs`, `github-read-adapter.mjs`, `host-bound-github-gate.mjs`, `synthetic-host-bootstrap.mjs`: consultative/manual gates, restricted GitHub GET and **synthetic** host identity checks. No authenticated runtime credential boundary is implemented.
-- `core/openspec-offline-phases.mjs`, `openspec-offline-resume.mjs`, `opsx-offline-guard.mjs`, `openspec-offline-cycle.mjs`: strictly simulated OpenSpec plan/apply/finalize, mock checkpoints, checklist, sync and archive. No real agent execution or OPSX semantic sync.
-- `core/local-fixture-inventory.mjs`, `local-fixture-qualification.mjs`, `tools/inventory_fdrelative.py`, `verify_local_git_fixture.py`: disposable local byte/lock/Git object qualification. `tests/r3g05-integrated-recipe.test.mjs` composes these fixtures and R3f, without authenticating a GitHub remote.
-- `tools/check_release_claim.py` and `preview_synthetic_release.py`: release claim schema and offline artifact byte consistency against **synthetic** tag and permission observations, not attested GitHub releases.
-- `tools/inspect_installation_status.py`: R5a-01 reports `unmanaged-legacy`, `drifted` or `unknown` without ever granting `verified` or source attestation.
-- `tools/preview_version_transition.py`: R5a-02/03 strict SemVer upgrade preflight, with R2d's exact `.asf/agentkit/` managed namespace and removal/ownership conflicts; no target writes.
-- `tools/preview_draft_pr.py`: R5b-01 purely in-memory advisory draft-PR plan composition, **not** an actual branch/commit/PR publisher.
-- `core/manual-phase-handoff-preview.mjs`: R3h-01 pure R3a/R3f manual phase/checkpoint handoff and simulated concurrency gate; no OpenCode or paid runner.
-- `core/checkpoint-journal-preview.mjs`: R3h-02 strict JSON journal chain for plan/apply/finalize with replay, SHA and scope refusal; no durable GitHub storage, no authority. See `docs/r3h02-checkpoint-journal.md`.
-- `core/disposable-checkpoint-journal-qualification.mjs`: R3h-03 exclusive 0600 journal byte write/read and fault injection **only inside an owned ephemeral Linux temp directory**; no target-repository writes or crash durability guarantee. See `docs/r3h03-disposable-byte-qualification.md`.
-- `core/disposable-checkpoint-cas-qualification.mjs`: R3h-04a private Linux filesystem-only CAS fixture, mkdir-exclusive lock, compare/version/digest, fsync+rename, interrupted write and negative tests. PR #84, `docs/r3h04-disposable-local-cas.md`. `tests/r3h04-live-interprocess-lock.test.mjs`: R3h-04b two live processes race for the local lock and check orphan refusal after SIGKILL; PR #85, `docs/r3h04b-live-interprocess-lock.md`. **No authenticated GitHub CAS, no real paid-job mutex or retry.**
-- `tools/preview_pr_publication.py`: R5b-02a synthetic target branch/SHA/check/concurrency publication preflight, never a real GitHub PR or authority.
-- `tools/qualify_local_installation_fixture.py`: R6a-01 disposable local target check composing read-only R5a/R5b previews and simulated publisher; not globally atomic or authenticated.
-- `tests/`: non-paid tests for the catalogue prototypes.
-- `examples/`: synthetic, non-installed examples; placeholder identifiers are not real releases.
-- `docs/`: ADR, release policy, security boundaries, and development roadmap.
+1. [Install](docs/kits/opencode-openspec/install.md) - preview the files, install on a branch and review the installation PR.
+2. [GitHub setup](docs/kits/opencode-openspec/github-setup.md) - set up the App, provider key and project protection.
+3. [Run a task](docs/kits/opencode-openspec/use.md) - run plan for one small task, review the spec, then run apply.
 
-Run `npm run check` with Node.js 22+ and Python 3.12+ with the pinned dependencies in `requirements-contracts.txt` installed. The CI installs them and runs `actionlint` on GitHub Actions workflows. This command does not invoke GitHub Apps, OpenRouter, OpenCode or a paid model.
+Setup needs project values and GitHub settings, so there is no complete one-line install today. Local installation uses Linux or WSL2. Agent execution runs remotely on GitHub.
 
-See [docs/roadmap.md](docs/roadmap.md) for the updated R3f/R3g/R3h (including #77/#79/#84/#85)/SEC-02b/R5a/R5b/R6a evidence and remaining gates. The R5 previews do not grant actual repository installation or publishing authority. R3e-03 real host identity, SEC-02 tag/release provenance, R3 manual runtime, optional R4, safe PR installer R5, qualification R6 and owner-approved activation R7 remain unfinished. Integrating a simulated test cannot make an operational grant true.
+## How OpenCode + OpenSpec works
 
-## Intended future repository-level installation
+**Plan → apply → sync specs**, with checks between steps.
 
-1. Audit an existing or empty GitHub repository and its actual default branch, rulesets, CI, agents' instructions, and backlog.
-2. Select an immutable, published release of a kit, pinned to its verified source commit.
-3. Generate an explicit, non-destructive dry-run diff. Never overwrite an existing `AGENTS.md` or CI silently.
-4. Open a **draft PR** with the generated kit files and `.asf/agentkit.lock.json`.
-5. Verify independent CI on the exact PR SHA and validate manual admin gates separately.
-6. Only after separate authorization configure app installations, secrets or rulesets and run a paid pilot.
+Plan writes the proposal, design, requirements and task list. Apply writes code and tests from that plan. Finalize syncs shared specs and archives the change.
 
-Merely merging a ruleset JSON file in a PR does **not** apply GitHub Settings.
+Use separate phase runs when you want to review the plan before implementation. Auto runs the sequence in one dispatch, without a human pause between phases.
 
-## Source of truth
+These are separate agent invocations with distinct roles. They run in sequence. Auto uses one selected model throughout; separate phase runs can select different allowed models.
 
-Read `AGENTS.md`, `ChatGPT.md`, `docs/adr/0001-catalogue-distribution.md` and the [ASF AgentKit Notion specification](https://app.notion.com/p/40012ac916368112b7fbc8d25dbb9838). Notion is the design reference; code on protected `main` is the current source for non-operational tooling. Track verified progress in the [living roadmap](https://app.notion.com/p/40112ac91636818dab99de3813963c0c). The qualification installation and AQ-009 run are pilot evidence; there is still no qualified installation from a published release or independent release provenance. Confirm GitHub state before making any live claim.
+The workflow checks scope, OpenSpec format, task completion and project tests. The published PR then goes through independent CI and human review. These checks help keep intent visible; they cannot guarantee the solution meets every user need.
 
-## Versioning
+## Know before you run
 
-Each kit will have independent SemVer releases, identified by namespaced protected tags, verified commit SHAs and a release manifest. Target repositories will lock installed kit versions and managed-file hashes. The current `0.0.0-private-r0` package version identifies **this scaffold only** and is **not** `opencode-openspec@0.0.0` or an installed AgentKit version.
+- Run one task at a time. This kit has no task-wave scheduler.
+- OpenCode runs on GitHub compute, away from your workstation. The publishing token is kept out of the model execution job. Remote execution still has network and provider-key risks.
+- The current model list uses OpenRouter and does not include OpenAI models.
+- Auto can invoke three agent phases. Each may make several API requests. There is no dollar cap.
+- The workflow opens or updates a draft PR. It does not automatically retry paid work or merge changes.
+- The current actor check supports a personal repository owner; organization use requires a reviewed policy change.
+
+Read [Limits, isolation and costs](docs/kits/opencode-openspec/limits.md) before the first run.
+
+## Explore the documentation
+
+[Architecture](docs/kits/opencode-openspec/architecture.md) · [Update and rollback](docs/kits/opencode-openspec/update.md) · [Troubleshooting](docs/kits/opencode-openspec/troubleshooting.md) · [Reference](docs/kits/opencode-openspec/reference.md) · [Releases and evidence](docs/kits/opencode-openspec/releases.md)
+
+## What comes next?
+
+The catalogue is designed to host more independently versioned workflows. Future kits may coordinate several project tasks or run task waves. Those features are not part of the current published kit.
+
+## Release
+
+Use [opencode-openspec 1.1.0](https://github.com/cedricmenec/asf-agent-kits/releases/tag/kits/opencode-openspec/v1.1.0). Each installed kit records its source commit and file hashes. The local lock does not authenticate the release publisher.

@@ -13,10 +13,10 @@ REPOSITORY = "cedricmenec/asf-agent-kits"
 KIT = "opencode-openspec"
 RELEASE_PATHS = (
     "bin/asf-agentkit",
-    "docs/ak-mvp-02-cli.md",
-    "docs/first-release-v1.0.0.md",
-    "docs/release-v1.1.0.md",
-    "docs/qualification-quickstart.md",
+    "docs/kits/opencode-openspec/reference.md",
+    "docs/kits/opencode-openspec/install.md",
+    "docs/kits/opencode-openspec/releases.md",
+    "docs/kits/opencode-openspec/use.md",
     "kits/opencode-openspec/kit.json",
     "kits/opencode-openspec/mvp-config.example.json",
     "kits/opencode-openspec/version.json",
