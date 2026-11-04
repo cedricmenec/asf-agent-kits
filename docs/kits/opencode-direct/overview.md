@@ -20,7 +20,7 @@ A call may make multiple billable API requests. The timeout is not a spending ca
 
 The model runner still has a provider key and network access. Scope checks run after execution and are not a process sandbox or a network firewall. The publisher never executes model-controlled package scripts. Independent product CI must run on the exact published PR SHA.
 
-The CLI currently manages one profile per `.asf/agentkit.lock.json`. It refuses replacing an OpenSpec installation with Direct or the reverse. Co-installation and profile migration need a separate reviewed change. The mutex can also match existing workflows when reviewing deployment manually.
+The CLI supports co-installation with a separate lock for each additional profile. Existing legacy locks remain unchanged. Both profiles must share the same paid execution mutex.
 
 ## Evidence and remaining gates
 

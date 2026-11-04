@@ -15,6 +15,17 @@ export const REPOSITORY = "cedricmenec/asf-agent-kits",
   KIT = "opencode-openspec";
 export const RELEASE_PATHS = [
   "bin/asf-agentkit",
+  ...["kit.json", "version.json", "mvp-config.example.json"].map(
+    (p) => "kits/opencode-direct/" + p,
+  ),
+  ...[
+    "agent-direct.yml",
+    "request.mjs",
+    "scope.mjs",
+    "model-policy.mjs",
+    "phase.sh",
+    "manual-acceptance.md",
+  ].map((p) => "kits/opencode-direct/templates/" + p + ".tmpl"),
   "package.json",
   "package-lock.json",
   ...["reference", "install", "releases", "use"].map(

@@ -1,3 +1,4 @@
+import { parse as parseYaml } from "yaml";
 import {
   fs,
   path,
@@ -29,6 +30,8 @@ import {
 import {
   FILES,
   DIRECT_FILES,
+  KIT_IDS,
+  profile_lock_path,
   profile,
   checked_config,
   render_mvp,
@@ -71,11 +74,16 @@ export function checkout(dir, repo) {
   return root;
 }
 export function observed(root, p) {
-  requireThat(ALLOWED.has(p) || p === LOCK_PATH, "Outside managed allowlist");
+  requireThat(
+    ALLOWED.has(p) ||
+      p === LOCK_PATH ||
+      KIT_IDS.some((k) => p === profile_lock_path(k)),
+    "Outside managed allowlist",
+  );
   return observe(root, p);
 }
-export function read_lock(root) {
-  const raw = observed(root, LOCK_PATH);
+function read_lock_file(root, lockPath) {
+  const raw = observed(root, lockPath);
   if (raw === null) return null;
   const lock = strictParse(raw);
   requireThat(
@@ -115,6 +123,58 @@ export function read_lock(root) {
     "Invalid ownership inventory",
   );
   return lock;
+}
+export function read_locks(root) {
+  const result = [];
+  for (const p of [LOCK_PATH, ...KIT_IDS.map(profile_lock_path)]) {
+    const lock = read_lock_file(root, p);
+    if (!lock) continue;
+    requireThat(
+      p === LOCK_PATH || p === profile_lock_path(lock.kitId),
+      "Profile lock path/identity mismatch",
+    );
+    requireThat(
+      !result.some((x) => x.lock.kitId === lock.kitId),
+      "Duplicate profile locks",
+    );
+    result.push({ path: p, lock });
+  }
+  return result;
+}
+export function read_lock(root, kit = null) {
+  if (kit) profile(kit);
+  const locks = read_locks(root);
+  if (kit) return locks.find((x) => x.lock.kitId === kit)?.lock || null;
+  requireThat(locks.length <= 1, "Several profiles installed; select --kit");
+  return locks[0]?.lock || null;
+}
+export function selected_lock_path(root, kit) {
+  const locks = read_locks(root);
+  return (
+    locks.find((x) => x.lock.kitId === kit)?.path ||
+    (locks.length ? profile_lock_path(kit) : LOCK_PATH)
+  );
+}
+function check_coinstallation(root, config, kit) {
+  for (const { lock } of read_locks(root)) {
+    requireThat(
+      lock.targetRepository === config.targetRepository,
+      "Repository/lock mismatch",
+    );
+    if (lock.kitId === kit) continue;
+    const p = profile(lock.kitId).files[0][1],
+      bytes = observed(root, p);
+    requireThat(
+      bytes && hash(bytes) === lock.managedFiles[p],
+      "Other profile workflow missing or drifted",
+    );
+    const workflow = parseYaml(bytes.toString("utf8"));
+    requireThat(
+      workflow?.jobs?.execute?.concurrency?.group === config.mutexGroup &&
+        workflow.jobs.execute.concurrency["cancel-in-progress"] === false,
+      "Co-installed profiles must share the same paid execution mutex",
+    );
+  }
 }
 export function source_snapshot(
   source,
@@ -265,6 +325,8 @@ export function plan(target, config, files, lock, newLock, operation) {
       lock && compareVersion(newLock.version, lock.version) > 0,
       "Upgrade version must be greater than locked version",
     );
+  check_coinstallation(target, config, newLock.kitId);
+  const lockPath = selected_lock_path(target, newLock.kitId);
   const operations = Object.keys(files)
     .sort()
     .map((p) => {
@@ -285,10 +347,10 @@ export function plan(target, config, files, lock, newLock, operation) {
       else action = actual.equals(files[p]) ? "unchanged" : "update";
       return { path: p, action, ...(reason ? { reason } : {}) };
     });
-  const installed = observed(target, LOCK_PATH),
+  const installed = observed(target, lockPath),
     proposed = canonical(newLock);
   operations.push({
-    path: LOCK_PATH,
+    path: lockPath,
     action:
       !lock && installed === null
         ? "create"
@@ -300,6 +362,7 @@ export function plan(target, config, files, lock, newLock, operation) {
   const conflicts = operations.filter((x) => x.action === "conflict").length;
   return {
     operation,
+    ...(lockPath !== LOCK_PATH ? { lockPath } : {}),
     kitId: newLock.kitId,
     targetRepository: config.targetRepository,
     version: newLock.version,
@@ -343,7 +406,10 @@ export function create_only(target, files, newLock, preview, expected, branch) {
     "Create-only conflict-free plan required",
   );
   checked_apply_branch(target, expected, branch);
-  const pending = { ...files, [LOCK_PATH]: canonical(newLock) },
+  const pending = {
+      ...files,
+      [preview.lockPath || LOCK_PATH]: canonical(newLock),
+    },
     created = [];
   try {
     for (const item of preview.operations)
@@ -373,10 +439,13 @@ export function apply_upgrade(
   );
   checked_apply_branch(target, expected, branch);
   requireThat(
-    observed(target, LOCK_PATH)?.equals(canonical(oldLock)),
+    observed(target, preview.lockPath || LOCK_PATH)?.equals(canonical(oldLock)),
     "Exact old lock bytes required",
   );
-  const pending = { ...files, [LOCK_PATH]: canonical(newLock) },
+  const pending = {
+      ...files,
+      [preview.lockPath || LOCK_PATH]: canonical(newLock),
+    },
     previous = {},
     applied = [];
   for (const { path: p, action } of preview.operations) {
@@ -386,14 +455,17 @@ export function apply_upgrade(
     requireThat(
       action === "update" &&
         actual !== null &&
-        (p === LOCK_PATH || hash(actual) === oldLock.managedFiles[p]),
+        (p === (preview.lockPath || LOCK_PATH) ||
+          hash(actual) === oldLock.managedFiles[p]),
       "Upgrade plan changed",
     );
     previous[p] = actual;
   }
   try {
     for (const item of [...preview.operations].sort(
-      (a, b) => Number(a.path === LOCK_PATH) - Number(b.path === LOCK_PATH),
+      (a, b) =>
+        Number(a.path === (preview.lockPath || LOCK_PATH)) -
+        Number(b.path === (preview.lockPath || LOCK_PATH)),
     )) {
       const p = item.path;
       if (item.action === "create")
@@ -439,8 +511,22 @@ export function apply_upgrade(
     throw e;
   }
 }
-export function status(target, repo) {
-  const lock = read_lock(target);
+export function status(target, repo, kit = null) {
+  const locks = read_locks(target);
+  if (!kit && locks.length > 1) {
+    const profiles = Object.fromEntries(
+      locks.map(({ lock }) => [lock.kitId, status(target, repo, lock.kitId)]),
+    );
+    return {
+      status: Object.values(profiles).every((p) => p.status === "hash-match")
+        ? "hash-match"
+        : "drifted",
+      targetRepository: repo,
+      profiles,
+      sourceProvenanceVerified: false,
+    };
+  }
+  const lock = read_lock(target, kit);
   if (!lock)
     return {
       status: "unmanaged",
@@ -474,7 +560,22 @@ export function status(target, repo) {
     files,
   };
 }
-export function doctor(target, repo, config) {
+export function doctor(target, repo, config, kit = null) {
+  const locks = read_locks(target);
+  if (!kit && locks.length > 1) {
+    const profiles = Object.fromEntries(
+      locks.map(({ lock }) => [
+        lock.kitId,
+        doctor(target, repo, null, lock.kitId),
+      ]),
+    );
+    return {
+      kind: "read-only-local-doctor",
+      repository: repo,
+      profiles,
+      writesPerformed: false,
+    };
+  }
   const file = (p) => {
     try {
       return fs.lstatSync(path.join(target, p)).isFile();
@@ -482,7 +583,7 @@ export function doctor(target, repo, config) {
       return false;
     }
   };
-  const direct = read_lock(target)?.kitId === "opencode-direct";
+  const direct = read_lock(target, kit)?.kitId === "opencode-direct";
   const localChecks = {
     ...(!direct ? { openspecConfigPresent: file("openspec/config.yaml") } : {}),
     packageLockPresent: file("package-lock.json"),
@@ -505,7 +606,7 @@ export function doctor(target, repo, config) {
   return {
     kind: "read-only-local-doctor",
     repository: repo,
-    installation: status(target, repo),
+    installation: status(target, repo, kit),
     localChecks,
     githubAppStatus: "unknown-not-queried",
     rulesetsStatus: "unknown-not-queried",
@@ -538,7 +639,7 @@ export async function main(argv = process.argv.slice(2)) {
     "Unknown command",
   );
   const command = a._[0],
-    known = ["_", "repo", "checkout"];
+    known = ["_", "repo", "checkout", "kit"];
   if (["install", "upgrade"].includes(command))
     known.push(
       "kit",
@@ -585,9 +686,9 @@ export async function main(argv = process.argv.slice(2)) {
     requireThat(cfg.targetRepository === a.repo, "Config repository mismatch");
   }
   let report;
-  if (command === "status") report = status(target, a.repo);
+  if (command === "status") report = status(target, a.repo, a.kit);
   else if (command === "doctor") {
-    report = doctor(target, a.repo, cfg);
+    report = doctor(target, a.repo, cfg, a.kit);
     if (a.github_read) {
       requireThat(cfg, "--github-read requires --config");
       const env = a.github_token_env || "GITHUB_TOKEN";
@@ -635,7 +736,7 @@ export async function main(argv = process.argv.slice(2)) {
         : null,
       files = rendered_source(a.source, a.source_commit, a.version, cfg, a.kit),
       newLock = desired_lock(files, cfg, a.version, a.source_commit, a.kit),
-      oldLock = read_lock(target);
+      oldLock = read_lock(target, a.kit);
     report = plan(target, cfg, files, oldLock, newLock, command);
     Object.assign(report, {
       configurationSha256: newLock.configurationSha256,
@@ -722,6 +823,7 @@ export async function main(argv = process.argv.slice(2)) {
         planSha,
         files,
         canonical(newLock),
+        report.lockPath || LOCK_PATH,
       );
     }
   }

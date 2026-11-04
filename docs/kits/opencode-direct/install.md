@@ -14,7 +14,7 @@ node bin/asf-agentkit install \
   --config /path/to/direct-config.json --dry-run
 ```
 
-Review all six managed files and the lock. Any pre-existing managed path or another installed kit blocks installation. Apply the same command with `--apply --expected-head TARGET_BRANCH_HEAD_SHA` instead of `--dry-run`. Inspect the diff, commit and open an installation PR. The existing `--pr` publisher also supports Direct with its usual approved dry-run digest and scoped App identity; see the [CLI reference](../opencode-openspec/reference.md) for those common options.
+Review all six managed files and the lock. Pre-existing unmanaged paths block installation. Another profile may already be installed; its files and lock are preserved. Apply the same command with `--apply --expected-head TARGET_BRANCH_HEAD_SHA` instead of `--dry-run`. Inspect the diff, commit and open an installation PR. The existing `--pr` publisher also supports Direct with its usual approved dry-run digest and scoped App identity; see the [CLI reference](../opencode-openspec/reference.md) for those common options.
 
 ```bash
 node bin/asf-agentkit status --repo OWNER/REPO --checkout /path/to/target
