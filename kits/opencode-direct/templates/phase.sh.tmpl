@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Loaded from the trusted dispatch SHA, never from model output.
+set -euo pipefail
+
+test "$PHASE" = run
+task_file="@@TASKDIRECTORY@@/$TASK_ID.md"
+test -s "$task_file"
+test -s package.json && test -s package-lock.json
+npm ci --ignore-scripts
+{
+  printf 'Read AGENTS.md if present, the selected task, product requirements and existing specifications.\n'
+  printf 'Implement ONLY task %s with the smallest necessary diff and deterministic tests.\n' "$TASK_ID"
+  printf 'Do not modify workflows, agent runtime, backlog, OpenSpec files, AGENTS.md, scripts, credentials or model policy.\n'
+  printf 'Never print secrets or invoke external services other than the model provider.\n'
+  printf 'Do not create commits, push, merge or publish. The trusted workflow publishes a draft PR.\n'
+  printf 'Run npm run @@CHECKSCRIPT@@ and fix failures within the task scope.\n'
+  cat "$task_file"
+} > "$RUNNER_TEMP/agentkit-direct-prompt.txt"
+opencode run --auto --model "$OPENCODE_MODEL" "$(cat "$RUNNER_TEMP/agentkit-direct-prompt.txt")"
+npm run @@CHECKSCRIPT@@

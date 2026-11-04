@@ -1,8 +1,10 @@
 {
   "id": "opencode-direct",
-  "status": "design-only",
+  "status": "runnable-local-template-qualified",
   "defaultEnabled": false,
-  "manualPhases": ["run"],
+  "manualPhases": [
+    "run"
+  ],
   "requiresControllerV3": false,
   "release": null
 }

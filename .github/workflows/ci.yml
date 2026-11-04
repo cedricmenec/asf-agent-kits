@@ -38,3 +38,9 @@ jobs:
           node tools/qualify_mvp_render.mjs \
             --config kits/opencode-openspec/mvp-config.example.json \
             --actionlint "$(go env GOPATH)/bin/actionlint"
+      - name: Qualify rendered OpenCode Direct kit, no LLM or installation
+        run: |
+          node tools/qualify_mvp_render.mjs \
+            --kit opencode-direct \
+            --config kits/opencode-direct/mvp-config.example.json \
+            --actionlint "$(go env GOPATH)/bin/actionlint"

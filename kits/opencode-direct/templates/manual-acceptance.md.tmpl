@@ -1,0 +1,10 @@
+# OpenCode Direct activation checklist
+
+Review the installation PR, independent CI and protected default branch before merging.
+Configure variable @@APPIDVAR@@ and secrets @@APPPRIVATEKEYSECRET@@ / @@OPENROUTERSECRET@@ manually, with separate administrative approval. Never paste their values into a task or command.
+The App needs contents:write and pull-requests:write on @@TARGETREPOSITORY@@ only. Its token exists only in the publisher job.
+Ensure Node/npm product files, lockfile, npm run @@CHECKSCRIPT@@ and @@TASKDIRECTORY@@/<ID>.md exist.
+The repository owner explicitly authorizes a paid invocation by manually dispatching the task and allowlisted model from @@DEFAULTBRANCH@@.
+One invocation can make multiple billed API requests. The timeout is not a dollar cap. No automatic paid retry or merge.
+The execute job shares @@MUTEXGROUP@@ with other installed development workflows; wait for publication before dispatching another task.
+Review the draft PR and independent CI on its exact SHA. Local tests do not prove live model/provider isolation.

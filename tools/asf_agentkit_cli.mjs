@@ -28,7 +28,8 @@ import {
 } from "./node/secure-fs.mjs";
 import {
   FILES,
-  TEMPLATES,
+  DIRECT_FILES,
+  profile,
   checked_config,
   render_mvp,
 } from "./render_mvp_kit.mjs";
@@ -47,7 +48,7 @@ import {
 import os from "node:os";
 export class CliError extends Error {}
 export const LOCK_PATH = ".asf/agentkit.lock.json",
-  ALLOWED = new Set(FILES.map((x) => x[1]));
+  ALLOWED = new Set([...FILES, ...DIRECT_FILES].map((x) => x[1]));
 export const digest = hash;
 export { canonical, git };
 export function origin(value) {
@@ -92,7 +93,7 @@ export function read_lock(root) {
     "Exact lock schema v2 required",
   );
   requireThat(
-    lock.kitId === "opencode-openspec" &&
+    ["opencode-openspec", "opencode-direct"].includes(lock.kitId) &&
       typeof lock.version === "string" &&
       VERSION.test(lock.version) &&
       lock.sourceRepository === "cedricmenec/asf-agent-kits" &&
@@ -106,13 +107,21 @@ export function read_lock(root) {
     object(lock.managedFiles) &&
       Object.keys(lock.managedFiles).length > 0 &&
       Object.entries(lock.managedFiles).every(
-        ([p, h]) => ALLOWED.has(p) && typeof h === "string" && HEX.test(h),
+        ([p, h]) =>
+          profile(lock.kitId).files.some(([, dest]) => dest === p) &&
+          typeof h === "string" &&
+          HEX.test(h),
       ),
     "Invalid ownership inventory",
   );
   return lock;
 }
-export function source_snapshot(source, commit, version) {
+export function source_snapshot(
+  source,
+  commit,
+  version,
+  kit = "opencode-openspec",
+) {
   const root = checkout(source, "cedricmenec/asf-agent-kits");
   requireThat(
     typeof commit === "string" &&
@@ -127,7 +136,8 @@ export function source_snapshot(source, commit, version) {
     "Exact stable SemVer required",
   );
   const read = (p) => git_artifact_bytes(root, commit, p);
-  const metadata = strictParse(read("kits/opencode-openspec/version.json"));
+  profile(kit);
+  const metadata = strictParse(read(`kits/${kit}/version.json`));
   requireThat(
     exact(metadata, [
       "schemaVersion",
@@ -143,17 +153,24 @@ export function source_snapshot(source, commit, version) {
   );
   return read;
 }
-export function rendered_source(source, commit, version, config) {
-  const read = source_snapshot(source, commit, version),
+export function rendered_source(
+  source,
+  commit,
+  version,
+  config,
+  kit = "opencode-openspec",
+) {
+  const read = source_snapshot(source, commit, version, kit),
+    selected = profile(kit),
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), "asf-agentkit-source-"));
   try {
-    for (const [name] of FILES) {
-      const p = path.join(tmp, TEMPLATES, name);
+    for (const [name] of selected.files) {
+      const p = path.join(tmp, selected.templates, name);
       fs.mkdirSync(path.dirname(p), { recursive: true });
-      fs.writeFileSync(p, read(TEMPLATES + name));
+      fs.writeFileSync(p, read(selected.templates + name));
     }
     return Object.fromEntries(
-      render_mvp(tmp, config).files.map((f) => [
+      render_mvp(tmp, config, kit).files.map((f) => [
         f.path,
         Buffer.from(f.contentBase64, "base64"),
       ]),
@@ -162,7 +179,13 @@ export function rendered_source(source, commit, version, config) {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 }
-export function check_candidate_manifest(source, commit, version, p) {
+export function check_candidate_manifest(
+  source,
+  commit,
+  version,
+  p,
+  kit = "opencode-openspec",
+) {
   const candidate = strictFile(p);
   requireThat(
     object(candidate) &&
@@ -175,13 +198,15 @@ export function check_candidate_manifest(source, commit, version, p) {
   requireThat(
     candidate.sourceRepository === "cedricmenec/asf-agent-kits" &&
       candidate.sourceCommitSha === commit &&
-      candidate.kitId === "opencode-openspec" &&
+      candidate.kitId === kit &&
       candidate.kitVersion === version,
     "Candidate identity mismatch",
   );
   const paths = candidate.artifacts.map((a) => a.path);
   requireThat(
-    FILES.every(([name]) => paths.includes(TEMPLATES + name)),
+    profile(kit).files.every(([name]) =>
+      paths.includes(profile(kit).templates + name),
+    ),
     "Missing templates",
   );
   const descriptor = Object.fromEntries(
@@ -194,10 +219,16 @@ export function check_candidate_manifest(source, commit, version, p) {
   );
   return hash(canonical(candidate));
 }
-export function desired_lock(files, config, version, sha) {
+export function desired_lock(
+  files,
+  config,
+  version,
+  sha,
+  kit = "opencode-openspec",
+) {
   return {
     schemaVersion: 2,
-    kitId: "opencode-openspec",
+    kitId: kit,
     version,
     sourceRepository: "cedricmenec/asf-agent-kits",
     sourceCommitSha: sha,
@@ -225,29 +256,35 @@ export function plan(target, config, files, lock, newLock, operation) {
     !lock || lock.targetRepository === config.targetRepository,
     "Lock belongs to another repository",
   );
+  requireThat(
+    !lock || lock.kitId === newLock.kitId,
+    "Changing installed kit requires a separate reviewed migration",
+  );
   if (operation === "upgrade")
     requireThat(
       lock && compareVersion(newLock.version, lock.version) > 0,
       "Upgrade version must be greater than locked version",
     );
-  const operations = [...ALLOWED].sort().map((p) => {
-    const actual = observed(target, p),
-      prior = lock?.managedFiles[p];
-    let action, reason;
-    if (actual === null)
-      [action, reason] = prior
-        ? ["conflict", "previously managed file missing"]
-        : ["create", null];
-    else if (!prior)
-      [action, reason] = ["conflict", "unmanaged pre-existing path"];
-    else if (hash(actual) !== prior)
-      [action, reason] = [
-        "conflict",
-        "local overlay differs from locked bytes",
-      ];
-    else action = actual.equals(files[p]) ? "unchanged" : "update";
-    return { path: p, action, ...(reason ? { reason } : {}) };
-  });
+  const operations = Object.keys(files)
+    .sort()
+    .map((p) => {
+      const actual = observed(target, p),
+        prior = lock?.managedFiles[p];
+      let action, reason;
+      if (actual === null)
+        [action, reason] = prior
+          ? ["conflict", "previously managed file missing"]
+          : ["create", null];
+      else if (!prior)
+        [action, reason] = ["conflict", "unmanaged pre-existing path"];
+      else if (hash(actual) !== prior)
+        [action, reason] = [
+          "conflict",
+          "local overlay differs from locked bytes",
+        ];
+      else action = actual.equals(files[p]) ? "unchanged" : "update";
+      return { path: p, action, ...(reason ? { reason } : {}) };
+    });
   const installed = observed(target, LOCK_PATH),
     proposed = canonical(newLock);
   operations.push({
@@ -263,7 +300,7 @@ export function plan(target, config, files, lock, newLock, operation) {
   const conflicts = operations.filter((x) => x.action === "conflict").length;
   return {
     operation,
-    kitId: "opencode-openspec",
+    kitId: newLock.kitId,
     targetRepository: config.targetRepository,
     version: newLock.version,
     sourceCommitSha: newLock.sourceCommitSha,
@@ -445,11 +482,16 @@ export function doctor(target, repo, config) {
       return false;
     }
   };
+  const direct = read_lock(target)?.kitId === "opencode-direct";
   const localChecks = {
-    openspecConfigPresent: file("openspec/config.yaml"),
+    ...(!direct ? { openspecConfigPresent: file("openspec/config.yaml") } : {}),
     packageLockPresent: file("package-lock.json"),
     packageJsonPresent: file("package.json"),
-    managedWorkflowPresent: file(".github/workflows/asf-agentkit-openspec.yml"),
+    managedWorkflowPresent: file(
+      direct
+        ? ".github/workflows/asf-agentkit-direct.yml"
+        : ".github/workflows/asf-agentkit-openspec.yml",
+    ),
   };
   if (config) {
     try {
@@ -486,7 +528,7 @@ export async function main(argv = process.argv.slice(2)) {
   const a = cliArgs(argv);
   if (a.help || a._[0] === "help") {
     console.log(
-      "asf-agentkit <install|upgrade|status|doctor> --repo OWNER/REPO --checkout PATH\ninstall/upgrade: --kit opencode-openspec --version X.Y.Z --source PATH --source-commit SHA --config FILE (--dry-run|--apply|--pr)\nLocal apply: --expected-head SHA; upgrade/PR also require --expected-plan-sha DIGEST",
+      "asf-agentkit <install|upgrade|status|doctor> --repo OWNER/REPO --checkout PATH\ninstall/upgrade: --kit opencode-openspec|opencode-direct --version X.Y.Z --source PATH --source-commit SHA --config FILE (--dry-run|--apply|--pr)\nLocal apply: --expected-head SHA; upgrade/PR also require --expected-plan-sha DIGEST",
     );
     return 0;
   }
@@ -562,7 +604,7 @@ export async function main(argv = process.argv.slice(2)) {
   } else {
     requireThat(
       cfg &&
-        a.kit === "opencode-openspec" &&
+        ["opencode-openspec", "opencode-direct"].includes(a.kit) &&
         typeof a.version === "string" &&
         typeof a.source === "string" &&
         typeof a.source_commit === "string",
@@ -588,10 +630,11 @@ export async function main(argv = process.argv.slice(2)) {
             a.source_commit,
             a.version,
             a.candidate_manifest,
+            a.kit,
           )
         : null,
-      files = rendered_source(a.source, a.source_commit, a.version, cfg),
-      newLock = desired_lock(files, cfg, a.version, a.source_commit),
+      files = rendered_source(a.source, a.source_commit, a.version, cfg, a.kit),
+      newLock = desired_lock(files, cfg, a.version, a.source_commit, a.kit),
       oldLock = read_lock(target);
     report = plan(target, cfg, files, oldLock, newLock, command);
     Object.assign(report, {

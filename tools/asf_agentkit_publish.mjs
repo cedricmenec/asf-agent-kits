@@ -8,7 +8,7 @@ import {
   hash,
 } from "./node/common.mjs";
 import { requestJson, ReadUnavailable } from "./asf_agentkit_github_read.mjs";
-import { FILES } from "./render_mvp_kit.mjs";
+import { profile } from "./render_mvp_kit.mjs";
 export const BRANCH =
   /^asf-agentkit\/install-[a-z0-9](?:[a-z0-9-]{0,45}[a-z0-9])?$/;
 export class PublishRefused extends Error {}
@@ -239,7 +239,8 @@ export async function publish_draft(
     HEX.test(approved || "") && approved === planSha,
     "Exact approved dry-run digest required",
   );
-  const allowed = FILES.map((x) => x[1]);
+  const lock = strictParse(lockBytes);
+  const allowed = profile(lock.kitId).files.map((x) => x[1]);
   requireThat(
     object(files) &&
       Object.keys(files).length === allowed.length &&
@@ -247,7 +248,6 @@ export async function publish_draft(
       Buffer.isBuffer(lockBytes),
     "Reviewed files and lock required",
   );
-  const lock = strictParse(lockBytes);
   requireThat(
     SHA.test(lock.sourceCommitSha || "") &&
       lock.targetRepository === repo &&
@@ -286,7 +286,10 @@ export async function publish_draft(
       tree: elements,
     });
     const commit = await writer.request("POST", "/git/commits", {
-      message: "chore(agentkit): propose pinned OpenCode+OpenSpec installation",
+      message:
+        lock.kitId === "opencode-direct"
+          ? "chore(agentkit): propose pinned OpenCode Direct installation"
+          : "chore(agentkit): propose pinned OpenCode+OpenSpec installation",
       tree: sha(tree.sha),
       parents: [expected],
     });
@@ -300,7 +303,10 @@ export async function publish_draft(
     requireThat(sha(created.object?.sha) === newSha, "Created branch moved");
     await ensure_base(writer, branch, expected);
     pr = await writer.request("POST", "/pulls", {
-      title: "AgentKit: proposed pinned OpenCode+OpenSpec installation",
+      title:
+        lock.kitId === "opencode-direct"
+          ? "AgentKit: proposed pinned OpenCode Direct installation"
+          : "AgentKit: proposed pinned OpenCode+OpenSpec installation",
       head: newBranch,
       base: branch,
       draft: true,
