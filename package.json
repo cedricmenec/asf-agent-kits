@@ -3,10 +3,19 @@
   "version": "0.0.0-private-r0",
   "private": true,
   "type": "module",
-  "description": "Development-only R0 scaffold for the ASF Agent Kits catalogue; not an installable release",
-  "engines": { "node": ">=22" },
+  "description": "ASF Agent Kits catalogue and local Node.js LTS installer",
+  "engines": {
+    "node": ">=26.13.0 <27"
+  },
   "scripts": {
-    "check": "python3 -m unittest discover -s tests -p test_*.py && node tools/check-contracts.mjs && node --test",
-    "test": "node --test"
+    "check": "node tools/check-no-legacy-runtime.mjs && node tools/check-contracts.mjs && node --test",
+    "test": "node --test",
+    "qualify": "node tools/qualify_mvp_render.mjs --config kits/opencode-openspec/mvp-config.example.json"
+  },
+  "dependencies": {
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1",
+    "diff": "8.0.2",
+    "yaml": "2.8.1"
   }
 }

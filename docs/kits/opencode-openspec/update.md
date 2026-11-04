@@ -8,7 +8,7 @@ Read the release notes, check the new source commit and preserve your current lo
 
 The current published release is 1.1.0. It adds auto as the default phase. Users upgrading from 1.0.0 must review that new cost behavior: auto can invoke three agent phases, with no dollar cap.
 
-Use the Python virtual environment from Install, or create one and install requirements-contracts.txt from the reviewed source before calling the CLI.
+Use the reviewed Node installer checkout from Install and run `npm ci --ignore-scripts` there before calling the CLI. Its source must be a reviewed Node migration commit or a subsequent Node release. The CLI can read historical release Git objects without executing their old installer.
 
 ## Preview and apply
 
@@ -21,11 +21,11 @@ TARGET="/absolute/path/to/target-repo"
 CONFIG="/absolute/path/to/agentkit-config.json"
 SOURCE_SHA="3ed348621cff28dc0b6be1503fce2a17bbc0f1e3"
 git -C "$SOURCE" fetch origin
-git -C "$SOURCE" switch --detach "$SOURCE_SHA"
+
 git -C "$TARGET" switch -c chore/upgrade-agentkit-1.1.0
 BASE_SHA="$(git -C "$TARGET" rev-parse HEAD)"
 kit_upgrade() {
-  python3 "$SOURCE/bin/asf-agentkit" upgrade \
+  node "$SOURCE/bin/asf-agentkit" upgrade \
     --repo "$REPOSITORY" --checkout "$TARGET" \
     --kit opencode-openspec --version 1.1.0 \
     --source "$SOURCE" --source-commit "$SOURCE_SHA" \
@@ -39,8 +39,8 @@ Read every operation and conflict. Copy planSha256 from this exact report. Then 
 ```bash
 PLAN_SHA="COPY_THE_REVIEWED_planSha256_VALUE"
 kit_upgrade --apply --expected-head "$BASE_SHA" --expected-plan-sha "$PLAN_SHA"
-python3 "$SOURCE/bin/asf-agentkit" status --repo "$REPOSITORY" --checkout "$TARGET"
-python3 "$SOURCE/bin/asf-agentkit" doctor --repo "$REPOSITORY" --checkout "$TARGET" --config "$CONFIG"
+node "$SOURCE/bin/asf-agentkit" status --repo "$REPOSITORY" --checkout "$TARGET"
+node "$SOURCE/bin/asf-agentkit" doctor --repo "$REPOSITORY" --checkout "$TARGET" --config "$CONFIG"
 git -C "$TARGET" diff --check
 git -C "$TARGET" diff
 ```

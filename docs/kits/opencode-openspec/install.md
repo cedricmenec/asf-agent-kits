@@ -2,7 +2,7 @@
 
 Install the kit through a normal branch and PR. Plan for setup: this release has no complete one-line installer.
 
-Use Linux or Ubuntu in WSL2 for the local CLI. Its safe file operations require POSIX features such as O\_NOFOLLOW and O\_DIRECTORY. Native Windows is not supported for those operations. Use Git, Python 3.12+ and Bash. The target runtime uses Node.js 22.
+Use Linux or Ubuntu in WSL2 for the local CLI. Its safe file operations require POSIX features such as O\_NOFOLLOW and O\_DIRECTORY. Native Windows is not supported for those operations. Use Git, Node.js 26.13.0 LTS, npm and Bash. Safe filesystem operations also require accessible Linux procfs directory descriptors. The next kit source pins Node 26.13.0; published release 1.1.0 retains its original Node 22 runtime.
 
 ## Before you start
 
@@ -17,7 +17,8 @@ Run from a workspace directory. Replace OWNER/REPO with your repository. If you 
 ```bash
 REPOSITORY="OWNER/REPO"
 git clone https://github.com/cedricmenec/asf-agent-kits.git agent-kits
-git -C agent-kits switch --detach 3ed348621cff28dc0b6be1503fce2a17bbc0f1e3
+INSTALLER_SHA="REVIEWED_NODE_INSTALLER_COMMIT"
+git -C agent-kits switch --detach "$INSTALLER_SHA"
 git clone "https://github.com/$REPOSITORY.git" target-repo
 SOURCE="$(pwd)/agent-kits"
 TARGET="$(pwd)/target-repo"
@@ -28,17 +29,16 @@ cp "$SOURCE/kits/opencode-openspec/mvp-config.example.json" "$CONFIG"
 
 This SHA is the source of release 1.1.0. Check it against the published release before use. The CLI reads Git objects at this commit. It does not authenticate the publisher.
 
-## Prepare the Python environment
+## Prepare the Node installer
 
-The CLI imports the pinned JSON Schema dependency. Create a virtual environment outside the target checkout and install the source requirements:
+The installer checkout must be a reviewed commit containing this Node CLI, or a subsequent Node release. Replace INSTALLER_SHA with that full reviewed commit. The published 1.1.0 source SHA below selects the templates to install, independently of the installer version. Checking out the old source as the executable installer would restore the old runtime requirement.
 
 ```bash
-python3 -m venv "$SOURCE/../agentkit-venv"
-source "$SOURCE/../agentkit-venv/bin/activate"
-python3 -m pip install -r "$SOURCE/requirements-contracts.txt"
+node --version
+npm --prefix "$SOURCE" ci --ignore-scripts
 ```
 
-Keep this environment active for all CLI commands in this guide.
+No global install is required. The Node CLI reads the exact source Git objects and never executes scripts from the selected historical source. This migration does not publish a new kit release.
 
 ## 2. Set your project values
 
@@ -55,7 +55,7 @@ git -C "$TARGET" status --short
 git -C "$TARGET" switch -c chore/install-agentkit-1.1.0
 BASE_SHA="$(git -C "$TARGET" rev-parse HEAD)"
 kit_install() {
-  python3 "$SOURCE/bin/asf-agentkit" install \
+  node "$SOURCE/bin/asf-agentkit" install \
     --repo "$REPOSITORY" --checkout "$TARGET" \
     --kit opencode-openspec --version 1.1.0 \
     --source "$SOURCE" --source-commit "$SOURCE_SHA" \
@@ -70,8 +70,8 @@ Read the full report. A fresh install creates nine kit files plus one lock file.
 
 ```bash
 kit_install --apply --expected-head "$BASE_SHA"
-python3 "$SOURCE/bin/asf-agentkit" status --repo "$REPOSITORY" --checkout "$TARGET"
-python3 "$SOURCE/bin/asf-agentkit" doctor --repo "$REPOSITORY" --checkout "$TARGET" --config "$CONFIG"
+node "$SOURCE/bin/asf-agentkit" status --repo "$REPOSITORY" --checkout "$TARGET"
+node "$SOURCE/bin/asf-agentkit" doctor --repo "$REPOSITORY" --checkout "$TARGET" --config "$CONFIG"
 git -C "$TARGET" diff --check
 git -C "$TARGET" status --short
 ```
