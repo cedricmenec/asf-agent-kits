@@ -18,7 +18,7 @@ The illustration shows the published OpenCode + OpenSpec path. The catalogue can
 
 | Kit | Status | Use |
 | --- | --- | --- |
-| OpenCode + OpenSpec | Published: 1.1.0 | Work from a spec, implement, check and review |
+| OpenCode + OpenSpec | Published: 1.2.0 | Work from a spec, implement, check and review |
 | OpenCode Direct | Planned profile; no executable release | Intended for direct agent work without the full OpenSpec cycle |
 
 Start with [Overview](docs/kits/opencode-openspec/overview.md). See [Overview and availability](docs/kits/opencode-direct/overview.md) for the second profile.
@@ -66,4 +66,4 @@ The catalogue is designed to host more independently versioned workflows. Future
 
 ## Release
 
-Use [opencode-openspec 1.1.0](https://github.com/cedricmenec/asf-agent-kits/releases/tag/kits/opencode-openspec/v1.1.0). Each installed kit records its source commit and file hashes. The local lock does not authenticate the release publisher.
+Use [opencode-openspec 1.2.0](https://github.com/cedricmenec/asf-agent-kits/releases/tag/kits/opencode-openspec/v1.2.0). Each installed kit records its source commit and file hashes. The local lock does not authenticate the release publisher.

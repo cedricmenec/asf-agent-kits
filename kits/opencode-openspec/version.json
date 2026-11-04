@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "kitVersion": "1.1.0",
+  "kitVersion": "1.2.0",
   "distribution": "user-pinned-git-commit",
   "releaseStatus": "stable"
 }

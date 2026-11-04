@@ -6,28 +6,31 @@ Update through a clean branch and normal PR. Keep local edits safe and read the 
 
 Read the release notes, check the new source commit and preserve your current lock and configuration in Git. Use Linux/WSL2, stop overlapping writes to the checkout and start with a clean working tree.
 
-The current published release is 1.1.0. It adds auto as the default phase. Users upgrading from 1.0.0 must review that new cost behavior: auto can invoke three agent phases, with no dollar cap.
+Release 1.2.0 removes Python and requires Node 26.13.0 LTS (supported range >=26.13.0 <27). Align the product package engines, root lockfile engines, .nvmrc, .npmrc (engine-strict=true) and project CI before checking the upgrade. Dependencies and product scripts need no version changes. Auto retains the 1.1.0 behavior: up to three agent phases, with no dollar cap.
 
-Use the reviewed Node installer checkout from Install and run `npm ci --ignore-scripts` there before calling the CLI. Its source must be a reviewed Node migration commit or a subsequent Node release. The CLI can read historical release Git objects without executing their old installer.
+Use the reviewed Node installer checkout from Install and run `npm ci --ignore-scripts` there before calling the CLI. Use the published 1.2.0 immutable source commit. The CLI can read historical release Git objects without executing their old installer.
 
 ## Preview and apply
 
-Use the same workspace layout as the install guide. Replace the values for your repository and paths. The command below targets release 1.1.0 from an older installed version.
+Use the same workspace layout as the install guide. Replace the values for your repository and paths. The command below targets release 1.2.0 from an older installed version.
 
 ```bash
 REPOSITORY="OWNER/REPO"
 SOURCE="/absolute/path/to/agent-kits"
 TARGET="/absolute/path/to/target-repo"
 CONFIG="/absolute/path/to/agentkit-config.json"
-SOURCE_SHA="3ed348621cff28dc0b6be1503fce2a17bbc0f1e3"
-git -C "$SOURCE" fetch origin
+git -C "$SOURCE" fetch origin tag kits/opencode-openspec/v1.2.0
+SOURCE_SHA="$(git -C "$SOURCE" rev-parse 'kits/opencode-openspec/v1.2.0^{commit}')"
+# Verify SHA and manifest against the published release before running code.
+git -C "$SOURCE" switch --detach "$SOURCE_SHA"
+npm --prefix "$SOURCE" ci --ignore-scripts
 
-git -C "$TARGET" switch -c chore/upgrade-agentkit-1.1.0
+git -C "$TARGET" switch -c chore/upgrade-agentkit-1.2.0
 BASE_SHA="$(git -C "$TARGET" rev-parse HEAD)"
 kit_upgrade() {
   node "$SOURCE/bin/asf-agentkit" upgrade \
     --repo "$REPOSITORY" --checkout "$TARGET" \
-    --kit opencode-openspec --version 1.1.0 \
+    --kit opencode-openspec --version 1.2.0 \
     --source "$SOURCE" --source-commit "$SOURCE_SHA" \
     --config "$CONFIG" "$@"
 }

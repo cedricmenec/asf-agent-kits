@@ -1,6 +1,18 @@
 # Releases and evidence
 
-Use release 1.1.0 for new installations. Check the published source and read the limits before running an agent.
+Use release 1.2.0 for new installations. Check the published source and read the limits before running an agent.
+
+## 1.2.0
+
+- Tag: kits/opencode-openspec/v1.2.0
+- Source commit and exact manifest digest: see the immutable GitHub release.
+- Node.js 26.13.0 LTS replaces Python for every catalogue tool and the local CLI.
+- Executor templates also pin Node 26.13.0; npm rejects runtimes outside >=26.13.0 <27.
+- Install/upgrade plans, managed-file hashes, overlays and rollback protections are retained.
+- Linux/WSL2 with accessible procfs directory descriptors remains required for safe writes.
+- Qualification: catalogue PR #110 (1,420 tests, actionlint, rendered kit), target PR #5 (actual upgrade, repeat, rollback and overlay refusal). No paid model was run for this migration.
+
+[Published release](https://github.com/cedricmenec/asf-agent-kits/releases/tag/kits/opencode-openspec/v1.2.0) · [Upgrade guide](update.md)
 
 ## 1.1.0
 
@@ -18,7 +30,7 @@ The release itself does not prove that every phase has been exercised on a real 
 
 ## 1.0.0
 
-First stable source-pinned release. Retained as historical release information. New installation instructions target 1.1.0.
+First stable source-pinned release. Retained as historical release information. New installation instructions target 1.2.0.
 
 [Published release 1.0.0](https://github.com/cedricmenec/asf-agent-kits/releases/tag/kits/opencode-openspec/v1.0.0)
 
