@@ -95,12 +95,35 @@ for (const [cid, c] of cases.entries())
       }
       const mod = await import(`../tools/${c.module}.mjs`),
         args = decode(c.args);
+      // These reference cases originally injected a race at os.open. Restore
+      // that intervention at the corresponding Node syscall, not just its
+      // pre-race snapshot.
+      const race = c.case.includes('swapped_to_symlink');
+      let injected = false;
+      if (race) {
+        const originalOpen = fs.openSync;
+        const parentRace = c.case.includes('parent_directory');
+        const name = parentRace ? args[2][0].split('/')[0] : args[2][0].split('/').at(-1);
+        const outside = path.join(tmp, 'race-outside');
+        if (parentRace) fs.mkdirSync(outside);
+        else fs.writeFileSync(outside, 'Outside bytes must never be read');
+        t.mock.method(fs, 'openSync', (p, flags, ...rest) => {
+          if (!injected && typeof p === 'string' && p.startsWith('/proc/self/fd/') && p.endsWith('/' + name)) {
+            injected = true;
+            if (parentRace) fs.renameSync(p, p + '.moved');
+            else fs.unlinkSync(p);
+            fs.symlinkSync(outside, p);
+          }
+          return originalOpen(p, flags, ...rest);
+        });
+      }
       if (c.denied) await assert.rejects(async () => mod[c.function](...args));
       else
         assert.deepEqual(
           normalize(encode(await mod[c.function](...args))),
           normalize(c.result),
         );
+      if (race) assert.equal(injected, true, 'Race was exercised at open');
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }

@@ -17,7 +17,16 @@ import { previewIntegratedOpenSpecCycle } from '../core/openspec-offline-cycle.m
 import { previewLocalFixtureQualification } from '../core/local-fixture-qualification.mjs';
 
 let procfsAvailable=false;try{const fd=openRoot(process.cwd());closeSync(fd);procfsAvailable=true;}catch{}
-const test=(name,fn)=>nativeTest(name,t=>{if(!procfsAvailable){assert.notEqual(process.env.CI,'true','Linux procfs required in CI');t.skip('Local filesystem broker lacks procfs descriptors');return;}return fn(t);});
+function test(name, options, fn) {
+  if (typeof options === 'function') { fn=options; options={}; }
+  return nativeTest(name, options, t=> {
+    if (!procfsAvailable) {
+      assert.notEqual(process.env.CI, 'true', 'Linux procfs required in CI');
+      t.skip('Local filesystem broker lacks procfs descriptors'); return;
+    }
+    return fn(t);
+  });
+}
 const A='a'.repeat(40), B='b'.repeat(40), D='d'.repeat(40);
 const TASK='TS-123', P='openspec/changes/ts-123/';
 const S='openspec/specs/widgets/spec.md', PRODUCT='docs/product/guide.md';

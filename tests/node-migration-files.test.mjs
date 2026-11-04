@@ -150,8 +150,9 @@ test("anchored creation and inode checked recovery", () =>
       id = exclusiveFile(root, p, Buffer.from("one"));
     assert.equal(observe(root, p).toString(), "one");
     assert.throws(() => exclusiveFile(root, p, Buffer.from("two")));
-    fs.unlinkSync(path.join(root, p));
-    put(path.join(root, p), "foreign");
+    // Allocate the foreign inode before removing ours, avoiding inode reuse.
+    put(path.join(root, "foreign.txt"), "foreign");
+    fs.renameSync(path.join(root, "foreign.txt"), path.join(root, p));
     recoverCreated(root, p, id);
     assert.equal(fs.readFileSync(path.join(root, p), "utf8"), "foreign");
   }));
