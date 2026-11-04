@@ -438,12 +438,12 @@ test("pinned renderer ignores modified worktree and Git symlink objects", () =>
       cfg = strictFile(
         path.join(ROOT, "kits/opencode-openspec/mvp-config.example.json"),
       ),
-      before = cli.rendered_source(source, sha, "1.1.0", cfg);
+      before = cli.rendered_source(source, sha, strictFile(path.join(source, "kits/opencode-openspec/version.json")).kitVersion, cfg);
     put(
       path.join(source, "kits/opencode-openspec/templates/phase.sh.tmpl"),
       "untrusted",
     );
-    assert.deepEqual(cli.rendered_source(source, sha, "1.1.0", cfg), before);
+    assert.deepEqual(cli.rendered_source(source, sha, strictFile(path.join(source, "kits/opencode-openspec/version.json")).kitVersion, cfg), before);
     const p = path.join(
       source,
       "kits/opencode-openspec/templates/phase.sh.tmpl",
@@ -451,7 +451,7 @@ test("pinned renderer ignores modified worktree and Git symlink objects", () =>
     fs.unlinkSync(p);
     fs.symlinkSync("request.mjs.tmpl", p);
     const bad = commit(source);
-    assert.throws(() => cli.rendered_source(source, bad, "1.1.0", cfg));
+    assert.throws(() => cli.rendered_source(source, bad, strictFile(path.join(source, "kits/opencode-openspec/version.json")).kitVersion, cfg));
   }));
 test("manifest exact-byte verification refuses reformatting and symlinks", () =>
   fixture((root) => {
