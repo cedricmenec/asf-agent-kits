@@ -1,3 +1,5 @@
-# Synthetic examples only
+# Synthetic examples
 
-`valid-config.json` is a **format example, not an installable or approved configuration**. The repository, model and versions are illustrative and must be replaced by inspected values. No `.asf/agentkit.lock.json` or release manifest is provided because **there is no published release**. Never treat this JSON as authorization to run OpenRouter.
+`valid-config.json` illustrates the early configuration contract. It is not an installable configuration or permission to run a model.
+
+For the published kit, follow the [installation guide](../docs/kits/opencode-openspec/install.md) and edit `kits/opencode-openspec/mvp-config.example.json` for your project. Read the [reference](../docs/kits/opencode-openspec/reference.md) for the actual CLI configuration and lock format.

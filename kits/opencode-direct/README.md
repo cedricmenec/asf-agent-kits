@@ -1,3 +1,5 @@
-# OpenCode direct profile
+# OpenCode Direct
 
-Optional, disabled by default. Design-only in R0. Shares security and model policy with OpenSpec profile. **Not an executable or released kit.**
+This is a planned optional profile with no executable release.
+
+Read the [profile documentation](../../docs/kits/opencode-direct/README.md) for its purpose and current availability.
