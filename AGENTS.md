@@ -8,7 +8,7 @@ This repository develops **ASF Agent Kits**, not the ThreadStep product. Always 
 
 ## Allowed without additional approvals
 
-Read source and Notion specs, propose atomic changes, create ordinary feature branches and draft PRs, and execute non-paying local and CI checks in permitted environments. Report exact SHA, tests and links. Do not claim readiness from a planned test.
+Read repository source and specifications, propose atomic changes, create ordinary feature branches and draft PRs, and execute non-paying local and CI checks in permitted environments. Report exact SHA, tests and links. Do not claim readiness from a planned test.
 
 ## Separate authorization gates
 
@@ -23,4 +23,4 @@ Never configure GitHub App permissions, add or rotate secrets, apply or weaken b
 - Always maintain a non-paying, independent CI. `npm run check` is R0-only and is not evidence of the future agent runtime passing.
 - Preserve existing documents and local overlays during installation and upgrade; require deterministic plans, conflict detection, and exact-lock provenance.
 
-Read `docs/contributing.md`, `docs/kits/opencode-openspec/limits.md`, `docs/adr/0001-catalogue-distribution.md` and the related Notion AK specification and roadmap before beginning an implementation PR.
+Read `docs/contributing.md`, `docs/kits/opencode-openspec/limits.md`, `docs/adr/0001-catalogue-distribution.md` and the repository issues describing the relevant scope before beginning an implementation PR.

@@ -4,12 +4,12 @@ The public user path is the Python CLI plus the OpenCode/OpenSpec workflow templ
 
 ## Main source locations
 
-- bin/asf-agentkit and tools/asf\_agentkit\_[cli.py](http://cli.py): install, status, doctor and upgrade.
-- tools/render\_mvp\_[kit.py](http://kit.py): exact install file allowlist and rendering.
+- [bin/asf-agentkit](../bin/asf-agentkit) and [tools/asf_agentkit_cli.py](../tools/asf_agentkit_cli.py): install, status, doctor and upgrade.
+- [tools/render_mvp_kit.py](../tools/render_mvp_kit.py): exact install file allowlist and rendering.
 - kits/opencode-openspec/templates/: runtime workflow and guards.
 - kits/opencode-openspec/version.json: kit version.
-- tools/build\_release\_[manifest.py](http://manifest.py): fixed distribution inventory.
-- tools/inspect\_release\_[evidence.py](http://evidence.py): read-only consistency observations.
+- [tools/build_release_manifest.py](../tools/build_release_manifest.py): fixed distribution inventory.
+- [tools/inspect_release_evidence.py](../tools/inspect_release_evidence.py): read-only consistency observations.
 - core/, tools/plan\_*.py and tools/preview\_*.py: offline/prototype helpers; not the published executor by themselves.
 - tests/: regression and fixture checks.
 
@@ -29,7 +29,7 @@ The catalogue CI also runs workflow linting and rendered-kit qualification. Read
 
 Keep project-owned instructions, CI and overlays safe during installation. Keep guard scripts based on the trusted dispatch commit. Do not pass publication credentials to the model job.
 
-Update user docs when commands or limits change. Keep historical task progress in issues and Notion. Keep useful decisions in ADRs and mark proposals as proposals.
+Update user docs when commands or limits change. Keep historical task progress in repository issues. Keep useful decisions in ADRs and mark proposals as proposals.
 
 The existing ADR is retained as a historical proposal with its original status. Its dated context may differ from the current runtime; it is not the installation guide.
 
