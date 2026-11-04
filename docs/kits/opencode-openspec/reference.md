@@ -39,7 +39,7 @@ These are the installed policy values, not a claim about provider availability. 
 
 ## CLI
 
-Run the CLI from the pinned source checkout with Python.
+Run the CLI from the reviewed Node installer checkout with Node.js 26.13.0 LTS.
 
 | Command | Result |
 | --- | --- |

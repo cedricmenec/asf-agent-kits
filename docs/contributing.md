@@ -1,24 +1,23 @@
 # Contributing
 
-The public user path is the Python CLI plus the OpenCode/OpenSpec workflow templates. The repository also contains older offline research modules. Keep their status clear when changing them.
+The public user path is the Node.js CLI plus the OpenCode/OpenSpec workflow templates. The repository also contains older offline research modules. Keep their status clear when changing them.
 
 ## Main source locations
 
-- [bin/asf-agentkit](../bin/asf-agentkit) and [tools/asf_agentkit_cli.py](../tools/asf_agentkit_cli.py): install, status, doctor and upgrade.
-- [tools/render_mvp_kit.py](../tools/render_mvp_kit.py): exact install file allowlist and rendering.
+- [bin/asf-agentkit](../bin/asf-agentkit) and [tools/asf_agentkit_cli.mjs](../tools/asf_agentkit_cli.mjs): install, status, doctor and upgrade.
+- [tools/render_mvp_kit.mjs](../tools/render_mvp_kit.mjs): exact install file allowlist and rendering.
 - kits/opencode-openspec/templates/: runtime workflow and guards.
 - kits/opencode-openspec/version.json: kit version.
-- [tools/build_release_manifest.py](../tools/build_release_manifest.py): fixed distribution inventory.
-- [tools/inspect_release_evidence.py](../tools/inspect_release_evidence.py): read-only consistency observations.
-- core/, tools/plan\_*.py and tools/preview\_*.py: offline/prototype helpers; not the published executor by themselves.
+- [tools/build_release_manifest.mjs](../tools/build_release_manifest.mjs): fixed distribution inventory.
+- [tools/inspect_release_evidence.mjs](../tools/inspect_release_evidence.mjs): read-only consistency observations.
+- core/, tools/plan\_*.mjs and tools/preview\_*.mjs: offline/prototype helpers; not the published executor by themselves.
 - tests/: regression and fixture checks.
 
 ## Validate a change
 
-Use Node.js 22+ and Python 3.12+. Install the pinned contract dependencies, then run the non-paying repository checks.
+Use Node.js 26.13.0 LTS. Install the pinned npm dependencies, then run the non-paying repository checks.
 
 ```bash
-python3 -m pip install -r requirements-contracts.txt
 npm ci --ignore-scripts
 npm run check
 ```

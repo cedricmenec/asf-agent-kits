@@ -2,16 +2,22 @@
  * R3g-05: disposable Git commit + fd-relative bytes + mock OpenSpec cycle.
  * Integration tests only. Never run against an actual user repository.
  */
-import test from 'node:test';
+import nativeTest from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, rm, symlink, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { inventory_fdrelative } from '../tools/inventory_fdrelative.mjs';
+import { verify_local_git_fixture } from '../tools/verify_local_git_fixture.mjs';
+import { openRoot } from '../tools/node/secure-fs.mjs';
+import { closeSync } from 'node:fs';
 import { previewIntegratedOpenSpecCycle } from '../core/openspec-offline-cycle.mjs';
 import { previewLocalFixtureQualification } from '../core/local-fixture-qualification.mjs';
 
+let procfsAvailable=false;try{const fd=openRoot(process.cwd());closeSync(fd);procfsAvailable=true;}catch{}
+const test=(name,fn)=>nativeTest(name,t=>{if(!procfsAvailable){assert.notEqual(process.env.CI,'true','Linux procfs required in CI');t.skip('Local filesystem broker lacks procfs descriptors');return;}return fn(t);});
 const A='a'.repeat(40), B='b'.repeat(40), D='d'.repeat(40);
 const TASK='TS-123', P='openspec/changes/ts-123/';
 const S='openspec/specs/widgets/spec.md', PRODUCT='docs/product/guide.md';
@@ -59,15 +65,11 @@ async function fixture(callback){
     return await callback({root,repo,head,paths,input});
   } finally { await rm(root,{recursive:true,force:true}); }
 }
-// All Python calls use a constant script and caller-created temporary paths.
-// Python verifies actual local Git objects and inventories ALL three byte trees
-// independently with fd-relative O_NOFOLLOW, not Node pathname lstat only.
-const PYTHON_PROOF="import json,sys\nfrom pathlib import Path\nsys.path.insert(0,str(Path.cwd()/'tools'))\nfrom verify_local_git_fixture import verify_local_git_fixture\nfrom inventory_fdrelative import inventory_fdrelative\nrepo,root,head,paths=sys.argv[1:]\npaths=json.loads(paths)\nproof=verify_local_git_fixture(repo,root+'/before',head,paths['before'])\nshots={stage:inventory_fdrelative(root+'/'+stage,head,paths[stage]) for stage in ('before','after','archived')}\nprint(json.dumps({'proof':proof,'shots':shots},sort_keys=True))\n";
-function pythonProof({repo,root,head,paths}){
-  const response=execFileSync('python3',['-c',PYTHON_PROOF,join(repo,'.git'),root,
-    head,JSON.stringify(paths)],{cwd:process.cwd(),encoding:'utf8',timeout:10000,
-    maxBuffer:1048576,env:{...GIT_ENV,PYTHONDONTWRITEBYTECODE:'1'}});
-  return JSON.parse(response);
+// Descriptor-anchored Node inspection, independently of the advisory previews.
+function nodeProof({repo,root,head,paths}) {
+  const proof=verify_local_git_fixture(join(repo,'.git'),join(root,'before'),head,paths.before);
+  const shots=Object.fromEntries(['before','after','archived'].map(stage=>[stage,inventory_fdrelative(join(root,stage),head,paths[stage])]));
+  return {proof,shots};
 }
 const checklist=done=>['## Implementation checklist',
   '- ['+(done?'x':' ')+'] Implement safely','- [x] Check unit tests',
@@ -108,7 +110,7 @@ function cycleInput(head,shots){
     archiveDate:DATE};
 }
 async function recipe(f,mutate=()=>{}){
-  const inspected=pythonProof(f);
+  const inspected=nodeProof(f);
   const cycle=cycleInput(f.head,inspected.shots);
   const plan=(await import('../core/openspec-offline-phases.mjs'))
     .previewOpenSpecTransition(cycle.hostPolicy,null,cycle.phaseInputs.plan);
@@ -146,7 +148,7 @@ test('R3g-05: actual local Git HEAD and fd-inventoried bytes match complete mock
     assertNoGrants(result.qualified);
     assertNoGrants(result.inspected.proof);
     assert.equal(await readFile(join(f.root,'before',S),'utf8'),before);
-    assert.deepEqual(pythonProof(f),result.inspected);
+    assert.deepEqual(nodeProof(f),result.inspected);
   }));
 const negative=[
   ['checklist pending at apply',async({cycle})=>{cycle.phaseInputs.apply.checklist=checklist(false);}],
@@ -176,10 +178,10 @@ test('R3g-05 rejects moved actual Git HEAD even if snapshots still match',
     git(f.repo,'add','--',S);
     git(f.repo,'-c','user.name=Fixture','-c','user.email=fixture@example.invalid',
       'commit','-qm','move disposable HEAD');
-    assert.throws(()=>pythonProof(f));
+    assert.throws(()=>nodeProof(f));
   }));
 test('R3g-05 rejects Git object byte mismatch and untracked snapshot extras',
   {skip:process.platform!=='linux'},async()=>fixture(async f=>{
     await writeFile(join(f.root,'before',S),'tampered bytes\n');
-    assert.throws(()=>pythonProof(f));
+    assert.throws(()=>nodeProof(f));
   }));
