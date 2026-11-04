@@ -1,13 +1,8 @@
 # OpenCode Direct
 
-A catalogue profile for direct OpenCode work without the full OpenSpec cycle.
+Execute one existing backlog task with OpenCode, run the project's tests and publish a draft PR without an OpenSpec phase cycle.
 
-Status: design-only. No executable kit or published release is available in this repository.
+Development profile 0.1.0, installable from an explicitly pinned source commit. No Direct release or live paid qualification is published yet.
 
-## Overview and availability
-
-[OpenCode Direct - Status and scope](overview.md)
-
-Kit-specific installation, usage and troubleshooting guides will be added here when the workflow is delivered. Do not use this profile as an installation artifact.
-
-- [OpenCode Direct - Status and scope](overview.md)
+- [Scope and safety](overview.md)
+- [Install, run and recover](install.md)

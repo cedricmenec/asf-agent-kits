@@ -19,7 +19,7 @@ The illustration shows the published OpenCode + OpenSpec path. The catalogue can
 | Kit | Status | Use |
 | --- | --- | --- |
 | OpenCode + OpenSpec | Published: 1.2.0 | Work from a spec, implement, check and review |
-| OpenCode Direct | Planned profile; no executable release | Intended for direct agent work without the full OpenSpec cycle |
+| OpenCode Direct | Development profile 0.1.0; installable from pinned source, no published release | Intended for direct agent work without the full OpenSpec cycle |
 
 Start with [Overview](docs/kits/opencode-openspec/overview.md). See [Overview and availability](docs/kits/opencode-direct/overview.md) for the second profile.
 

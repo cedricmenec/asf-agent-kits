@@ -23,7 +23,7 @@ for (const dir of dirs) {
   const descriptor = JSON.parse(await readFile(path.join(rootDir, 'kits',dir,'kit.json'),'utf8'));
   const allowedStatus = dir === 'opencode-openspec'
     ? ['runnable-local-template-qualified']
-    : ['design-only'];
+    : ['runnable-local-template-qualified'];
   const expectedRelease = dir === 'opencode-openspec'
     ? { version: '1.2.0', tag: 'kits/opencode-openspec/v1.2.0', distribution: 'user-pinned-git-commit' }
     : null;

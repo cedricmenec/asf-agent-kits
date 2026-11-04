@@ -12,7 +12,7 @@ ASF Agent Kits is a catalogue of reusable coding-agent workflows. Choose a workf
 | Workflow | Purpose | Availability |
 | --- | --- | --- |
 | [OpenCode + OpenSpec](kits/opencode-openspec/README.md) | Turn one task into a spec, code, checks and a draft PR | Published kit |
-| [OpenCode Direct](kits/opencode-direct/README.md) | Direct OpenCode work without the full OpenSpec cycle | Design profile; no executable release |
+| [OpenCode Direct](kits/opencode-direct/README.md) | Direct OpenCode work without the full OpenSpec cycle | Development profile 0.1.0; pinned-source installation, no published release |
 
 Each workflow has its own section. Open it for the overview, architecture, installation, usage, limits, updates and troubleshooting. Guides appear only when that kit supports them.
 

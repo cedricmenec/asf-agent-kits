@@ -72,28 +72,48 @@ export function checked_config(config) {
       .map(([k, v]) => [k.toUpperCase(), v]),
   );
 }
-export function render_mvp(source, config) {
+export const DIRECT_FILES = [
+  ["agent-direct.yml.tmpl", ".github/workflows/asf-agentkit-direct.yml"],
+  ...["request.mjs", "scope.mjs", "model-policy.mjs", "phase.sh"].map((v) => [
+    v + ".tmpl",
+    ".asf/agentkit/direct/" + v,
+  ]),
+  ["manual-acceptance.md.tmpl", ".asf/agentkit/direct/manual-acceptance.md"],
+];
+export function profile(kit = "opencode-openspec") {
+  requireThat(
+    ["opencode-openspec", "opencode-direct"].includes(kit),
+    "Unsupported kit",
+  );
+  return kit === "opencode-direct"
+    ? { files: DIRECT_FILES, templates: "kits/opencode-direct/templates/" }
+    : { files: FILES, templates: TEMPLATES };
+}
+export function render_mvp(source, config, kit = "opencode-openspec") {
+  const selected = profile(kit);
   const root = safeRoot(source),
     vars = checked_config(config);
-  const files = FILES.map(([src, dest]) => {
-    const bytes = read_regular(root, TEMPLATES + src, 1048576);
-    let text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-    requireThat(!/[\0\r]/.test(text), "Invalid template bytes");
-    text = text.replace(/@@([A-Z_]+)@@/g, (_, key) => {
-      requireThat(Object.hasOwn(vars, key), "Unknown token");
-      return vars[key];
-    });
-    requireThat(!text.includes("@@"), "Unresolved delimiter");
-    const data = Buffer.from(text);
-    return {
-      path: dest,
-      sha256: hash(data),
-      contentBase64: data.toString("base64"),
-    };
-  }).sort((a, b) => (a.path < b.path ? -1 : 1));
+  const files = selected.files
+    .map(([src, dest]) => {
+      const bytes = read_regular(root, selected.templates + src, 1048576);
+      let text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      requireThat(!/[\0\r]/.test(text), "Invalid template bytes");
+      text = text.replace(/@@([A-Z_]+)@@/g, (_, key) => {
+        requireThat(Object.hasOwn(vars, key), "Unknown token");
+        return vars[key];
+      });
+      requireThat(!text.includes("@@"), "Unresolved delimiter");
+      const data = Buffer.from(text);
+      return {
+        path: dest,
+        sha256: hash(data),
+        contentBase64: data.toString("base64"),
+      };
+    })
+    .sort((a, b) => (a.path < b.path ? -1 : 1));
   return {
     kind: "ak-mvp-01-local-render",
-    kitId: "opencode-openspec",
+    kitId: kit,
     sourceProvenanceVerified: false,
     writesPerformed: false,
     files,
