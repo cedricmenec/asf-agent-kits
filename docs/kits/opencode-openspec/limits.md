@@ -17,9 +17,9 @@ Use one task at a time, review the spec and PR, and control provider spending. R
 | Setup | App, secrets and effective GitHub protections require manual setup |
 | Release trust | Lock hashes detect local drift; they do not authenticate the publisher |
 
-## Local filesystem security and residual TOCTOU risk (unreleased Node CLI)
+## Local filesystem security and residual TOCTOU risk (Node CLI 1.4.0)
 
-The **next Node.js CLI** removes the hard dependency on Linux `/proc/self/fd`.
+The **published 1.4.0 Node.js CLI** removes the hard dependency on Linux `/proc/self/fd`.
 It uses standard Node.js filesystem operations on a **trusted local checkout**.
 This is a deliberate trade-off, not an equivalent security guarantee.
 
@@ -52,8 +52,8 @@ risk **before** adopting a shared or adversarial execution environment.
 
 The descriptor-anchored Linux backend from immutable **1.3.0** has different,
 stronger guarantees and remains available through that pinned tag. The
-portable Node-only approach is a **future release candidate**, not something
-already delivered by that tag.
+portable Node-only approach is **published in 1.4.0**, and is not
+included in the 1.3.0 tag.
 
 ## One task at a time: precise meaning
 
