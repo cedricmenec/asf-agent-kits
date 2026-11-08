@@ -1,11 +1,12 @@
 # Releases and evidence
 
-The 1.4.0 source candidate includes both blocking fixes #118 and #119. The tag
-and release asset must be published **only after independent CI and an exact
-source-commit manifest check**. Do not describe a candidate as published until
-the GitHub release exists and its source SHA and manifest agree.
+**1.4.0 is the latest published OpenSpec kit release**, with the private
+GitHub read-authentication fix (#118) and portable Node.js CLI fix (#119).
+Use the immutable GitHub tag, verify the complete pinned source SHA and
+release-manifest SHA-256, and review the residual TOCTOU threat model before
+installing or upgrading.
 
-## 1.4.0 (candidate; publication pending)
+## 1.4.0 (published, immutable)
 
 - **Private Git repositories:** authenticated read-only ref checks through the
   scoped GitHub Actions token; ASF Flow App remains the isolated writer of draft PRs (#118).
@@ -15,11 +16,18 @@ the GitHub release exists and its source SHA and manifest agree.
   unsafe paths and existing links but accepts residual TOCTOU risk if an
   adversary can change parent directories concurrently. Use a trusted isolated
   checkout, not a hostile multi-tenant workspace.
-- The 1.4.0 release requires a source SHA, immutable tag
-  `kits/opencode-openspec/v1.4.0`, generated `release-manifest.json` asset,
-  and documented SHA-256. Never retag an earlier release.
+- Tag: `kits/opencode-openspec/v1.4.0`, pointing to source commit
+  `4f9a31f94888f20a2df7b4335ec7c0f5a70d869d`.
+- The published GitHub release is immutable and includes `release-manifest.json`,
+  `release-manifest.sha256` and release notes.
+- The 43-artifact manifest SHA-256 is
+  `7003f50e11163ef362f1fab886aa56d8fe11b2a4d7f2b3957c66467cf64e1b50`.
+- The release source is independently tested by catalogue CI and validated
+  through non-paying installation and upgrade qualifications on temporary
+  Git checkouts from one private and one public consumer repository.
+  No paid OpenCode execution is implied by these tests.
 
-[Risk matrix](limits.md#local-filesystem-security-and-residual-toctou-risk-unreleased-node-cli) · [Release preparation workflow](../../../.github/workflows/prepare-1-4-0-manifest.yml)
+[Published release](https://github.com/cedricmenec/asf-agent-kits/releases/tag/kits/opencode-openspec/v1.4.0) · [Risk matrix](limits.md#local-filesystem-security-and-residual-toctou-risk-node-cli-140) · [Manifest generation evidence](https://github.com/cedricmenec/asf-agent-kits/actions/runs/42497408174)
 
 ## 1.3.0 (published)
 
@@ -60,7 +68,7 @@ The release itself does not prove that every phase has been exercised on a real 
 
 ## 1.0.0
 
-First stable source-pinned release. Retained as historical release information. New installation instructions target 1.2.0.
+First stable source-pinned release. Retained as historical release information. New installations should use the latest published compatible version after validating its source and risk model.
 
 [Published release 1.0.0](https://github.com/cedricmenec/asf-agent-kits/releases/tag/kits/opencode-openspec/v1.0.0)
 
