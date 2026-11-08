@@ -25,7 +25,7 @@ for (const dir of dirs) {
     ? ['runnable-local-template-qualified']
     : ['runnable-local-template-qualified'];
   const expectedRelease = dir === 'opencode-openspec'
-    ? { version: '1.3.0', tag: 'kits/opencode-openspec/v1.3.0', distribution: 'user-pinned-git-commit' }
+    ? { version: '1.4.0', tag: 'kits/opencode-openspec/v1.4.0', distribution: 'user-pinned-git-commit' }
     : null;
   if (descriptor.id !== dir || !allowedStatus.includes(descriptor.status) ||
       JSON.stringify(descriptor.release) !== JSON.stringify(expectedRelease) ||
