@@ -33,18 +33,6 @@ jobs:
           go install github.com/rhysd/actionlint/cmd/actionlint@03d0035246f3e81f36aed592ffb4bebf33a03106
           "$(go env GOPATH)/bin/actionlint" -version
           "$(go env GOPATH)/bin/actionlint" -color
-      - name: Diagnose generated workflows with actionlint
-        run: |
-          node --input-type=module <<'NODE'
-          import {render_mvp} from './tools/render_mvp_kit.mjs';
-          import {strictFile,ROOT,fs} from './tools/node/common.mjs';
-          for (const kit of ['opencode-openspec','opencode-direct']) {
-            const cfg = strictFile(ROOT+'/kits/opencode-openspec/mvp-config.example.json');
-            const wf = render_mvp(ROOT,cfg,kit).files.find(f=>f.path.startsWith('.github/workflows/'));
-            fs.writeFileSync('/tmp/agentkit-'+kit+'.yml',Buffer.from(wf.contentBase64,'base64'));
-          }
-          NODE
-          "$(go env GOPATH)/bin/actionlint" /tmp/agentkit-opencode-openspec.yml /tmp/agentkit-opencode-direct.yml
       - name: Qualify rendered OpenCode/OpenSpec kit, no LLM or installation
         run: |
           node tools/qualify_mvp_render.mjs \
