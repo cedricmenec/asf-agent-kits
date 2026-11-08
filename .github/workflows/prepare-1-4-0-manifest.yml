@@ -1,0 +1,65 @@
+# One-shot, non-paying release evidence generation after the reviewed version bump.
+# This job NEVER creates a tag or a release and holds no write permissions.
+name: Prepare OpenSpec 1.4.0 manifest (non-paying)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - kits/opencode-openspec/version.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  manifest:
+    if: github.repository == 'cedricmenec/asf-agent-kits' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '26.13.0'
+          cache: npm
+      - name: Recompute the exact Git-object-based release manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          node tools/build_release_manifest.mjs --source . --source-commit "$GITHUB_SHA" > release-manifest.json
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const m = JSON.parse(readFileSync('release-manifest.json', 'utf8'));
+          if (m.kitId !== 'opencode-openspec' || m.kitVersion !== '1.4.0' ||
+              m.releaseTag !== 'kits/opencode-openspec/v1.4.0' ||
+              m.sourceCommitSha !== process.env.GITHUB_SHA ||
+              !Array.isArray(m.artifacts) || m.artifacts.length < 25) {
+            throw Error('Wrong tag, source commit or artifact inventory');
+          }
+          console.log('Release descriptor confirmed:', m.kitVersion,
+            m.sourceCommitSha, m.artifacts.length, 'Git artifacts');
+          NODE
+          sha256sum release-manifest.json | tee release-manifest.sha256
+          {
+            echo '## OpenSpec 1.4.0 candidate manifest'
+            echo ''
+            echo "Source SHA: \`$GITHUB_SHA\`"
+            echo ''
+            echo 'Manifest digest:'
+            cat release-manifest.sha256
+            echo ''
+            echo 'Owner/admin must review exact SHA, immutable release tag ruleset, and publish the tag and release manually. This job has no publishing token.'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: opencode-openspec-1.4.0-release-evidence
+          path: |
+            release-manifest.json
+            release-manifest.sha256
+          if-no-files-found: error
+          retention-days: 30
