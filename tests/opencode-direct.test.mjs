@@ -18,7 +18,6 @@ import {
   read_lock,
   apply_upgrade,
 } from "../tools/asf_agentkit_cli.mjs";
-import { openRoot } from "../tools/node/secure-fs.mjs";
 import { publish_draft } from "../tools/asf_agentkit_publish.mjs";
 const kit = "opencode-direct";
 const cfg = strictFile(
@@ -274,18 +273,7 @@ for (const failure of [null, "opencode", "check"])
         );
       }),
   );
-test("CLI pinned install, idempotence, drift, overlay refusal, upgrade and cross-profile refusal", (t) => {
-  try {
-    fs.closeSync(openRoot(ROOT));
-  } catch {
-    assert.notEqual(
-      process.env.CI,
-      "true",
-      "CI must expose Linux procfs for installation tests",
-    );
-    t.skip("Local filesystem broker does not expose procfs descriptors");
-    return;
-  }
+test("CLI pinned install, idempotence, drift, overlay refusal, upgrade and cross-profile refusal", () => {
   return fixture((root) => {
     const source = path.join(root, "source"),
       target = path.join(root, "target");
