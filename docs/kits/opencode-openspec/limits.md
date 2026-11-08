@@ -17,6 +17,44 @@ Use one task at a time, review the spec and PR, and control provider spending. R
 | Setup | App, secrets and effective GitHub protections require manual setup |
 | Release trust | Lock hashes detect local drift; they do not authenticate the publisher |
 
+## Local filesystem security and residual TOCTOU risk (unreleased Node CLI)
+
+The **next Node.js CLI** removes the hard dependency on Linux `/proc/self/fd`.
+It uses standard Node.js filesystem operations on a **trusted local checkout**.
+This is a deliberate trade-off, not an equivalent security guarantee.
+
+**Still enforced:** safe relative paths, existing parent and leaf symlink/junction
+rejection, hardlink/special-file refusal, case-collision checks, bounded stable
+reads, managed-file hashes and byte-for-byte preconditions, exclusive new-file
+creation, unique temporary replacement, identity checks, and best-effort
+rollback. The CLI refuses collisions rather than overwriting unknown files.
+
+**Residual TOCTOU risk:** pathname checks and a later create/rename are not
+atomic with respect to changes made by other processes. A hostile process with
+write permission to a parent directory could replace that directory with a
+symlink/junction **after it was inspected but before the operation**, redirecting
+an intended file operation outside the checkout. `O_EXCL` and `O_NOFOLLOW`
+(where available) protect the final path component, **not all ancestors**.
+Git SHA checks, lock hashes and a Git revert do **not** eliminate this risk,
+and rollback might also encounter a redirected path.
+
+| Execution context | Risk / suitability |
+| --- | --- |
+| Personal workstation, controlled checkout, no hostile concurrent writer | Generally low likelihood; standard CLI threat model |
+| Ephemeral isolated sandbox or dedicated GitHub runner | Generally low likelihood if no untrusted concurrent code can edit the checkout |
+| Shared workspace, untrusted install scripts, malicious concurrent process | Potentially serious; **do not rely on the Node CLI as a filesystem security boundary** |
+| Multi-tenant service executing against attacker-writable directories | Out of scope without stronger OS isolation or native directory-handle-relative operations |
+
+**Compensating controls:** use a dedicated disposable checkout and least-privileged
+OS account; do not run untrusted code concurrently; review `--dry-run`,
+the full Git diff, and PR CI; keep Git rollback available. Reassess this
+risk **before** adopting a shared or adversarial execution environment.
+
+The descriptor-anchored Linux backend from immutable **1.3.0** has different,
+stronger guarantees and remains available through that pinned tag. The
+portable Node-only approach is a **future release candidate**, not something
+already delivered by that tag.
+
 ## One task at a time: precise meaning
 
 Only the execute job is inside the concurrency group. Prepare and publish are outside it. With cancel-in-progress false, a running execution is not cancelled by a new one.
