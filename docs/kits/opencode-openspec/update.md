@@ -8,7 +8,7 @@ Read the release notes, check the new source commit and preserve your current lo
 
 Release 1.2.0 removes Python and requires Node 26.13.0 LTS (supported range >=26.13.0 <27). Align the product package engines, root lockfile engines, .nvmrc, .npmrc (engine-strict=true) and project CI before checking the upgrade. Dependencies and product scripts need no version changes. Auto retains the 1.1.0 behavior: up to three agent phases, with no dollar cap.
 
-Use the reviewed Node installer checkout from Install and run `npm ci --ignore-scripts` there before calling the CLI. For 1.4.0, use its published immutable source commit only after publication and verification. The CLI can read historical release Git objects without executing their old installer.
+Use the reviewed Node installer checkout from Install and run `npm ci --ignore-scripts` there before calling the CLI. For 1.4.0, use the published immutable source commit after verifying its tag and manifest. The CLI can read historical release Git objects without executing their old installer.
 
 ## Preview and apply
 
@@ -63,7 +63,7 @@ after the CLI checks it and before the write may redirect a file operation
 outside the checkout. The portable Node path-based approach does not offer the
 atomic directory-handle guarantees of the 1.3.0 Linux implementation.
 Do not rely on it in multi-tenant or adversarial shared workspaces.
-Read the [risk matrix](limits.md#local-filesystem-security-and-residual-toctou-risk-unreleased-node-cli).
+Read the [risk matrix](limits.md#local-filesystem-security-and-residual-toctou-risk-node-cli-140).
 
 ## Conflicts
 
