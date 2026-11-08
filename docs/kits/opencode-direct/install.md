@@ -31,7 +31,7 @@ concurrent process from changing a parent directory between inspection and
 writing (TOCTOU). Use a dedicated trusted checkout, no concurrent untrusted
 processes, a dry run and reviewed PR. This is not a safe multi-tenant
 filesystem isolation boundary. See the
-[shared risk matrix](../opencode-openspec/limits.md#local-filesystem-security-and-residual-toctou-risk-unreleased-node-cli).
+[shared risk matrix](../opencode-openspec/limits.md#local-filesystem-security-and-residual-toctou-risk-node-cli-140).
 
 Before a paid run, independently review the installed `.asf/agentkit/direct/manual-acceptance.md`, App permissions, secrets and default-branch protections. Configuration and activation require separate administrative authorization. The target needs its real `package.json`, lockfile, npm check and backlog task; the installer does not generate an application or fake tests.
 
