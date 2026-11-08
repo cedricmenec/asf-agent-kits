@@ -26,7 +26,8 @@ if [[ "$PHASE" == plan || "$PHASE" == auto ]]; then
   {
     printf 'Plan a spec-driven change in repository %s. Read AGENTS.md if present, the task file, product specifications, and OpenSpec instructions.\n' "$GITHUB_REPOSITORY"
     printf 'Use openspec status --change %s and openspec instructions for proposal, design, specs, tasks.\n' "$CHANGE_ID"
-    printf 'Create proposal.md, design.md, specs/<capability>/spec.md and tasks.md with observable scenarios.\n'
+    printf 'Create proposal.md, design.md, specs/<capability>/spec.md with observable GIVEN/WHEN/THEN scenarios and an executable tasks.md checklist.\n'
+    printf 'In tasks.md, keep code and deterministic tests as checkboxes. Put subjective visual/human/real-device acceptance in Manual acceptance without checkboxes; do not append Verify: visual scenarios to implementation tasks.\n'
     printf 'Change ID: %s\nTask: %s\n' "$CHANGE_ID" "$TASK_ID"
     cat .asf/agentkit/openspec-checklist.md
     cat "$task_file"
@@ -48,7 +49,7 @@ if [[ "$PHASE" == apply || "$PHASE" == auto ]]; then
     printf 'Implement ONLY the reviewed OpenSpec change %s for task %s.\n' "$CHANGE_ID" "$TASK_ID"
     printf 'Read AGENTS.md if present, task, proposal, design and delta specs; run openspec instructions apply --change %s.\n' "$CHANGE_ID"
     cat .asf/agentkit/openspec-checklist.md
-    printf 'Write implementation and deterministic tests. Run npm run @@CHECKSCRIPT@@; mark [x] only verified tasks.\n'
+    printf 'Write implementation and deterministic tests. Run npm run @@CHECKSCRIPT@@; mark [x] only verified tasks. Do not turn manual or post-sync review into checkboxes.\n'
     printf 'Do not modify reviewed proposal/design/delta specs, workflow, agentkit runtime, backlog, credentials or AGENTS.md.\n'
     printf 'Do not sync, archive, commit or publish: the trusted workflow does that.\n'
     cat "$task_file"
