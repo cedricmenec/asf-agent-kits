@@ -1,0 +1,29 @@
+name: Secure FS platform qualification (non-paying)
+on:
+  pull_request:
+    paths:
+      - tools/node/secure-fs.mjs
+      - tests/secure-fs-portability.test.mjs
+      - .github/workflows/secure-fs-portability.yml
+
+permissions:
+  contents: read
+
+jobs:
+  platforms:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '26.13.0'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test tests/secure-fs-portability.test.mjs
