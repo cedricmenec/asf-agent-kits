@@ -2,15 +2,19 @@
 
 Install the kit through a normal branch and PR. Plan for setup: this release has no complete one-line installer.
 
-Use Linux or Ubuntu in WSL2 for the local CLI. Its safe file operations require POSIX features such as O\_NOFOLLOW and O\_DIRECTORY. Native Windows is not supported for those operations. Use Git, Node.js 26.13.0 LTS, npm and Bash. Safe filesystem operations also require accessible Linux procfs directory descriptors. Release 1.2.0 pins Node 26.13.0 for both the installer and executor.
+Use Git, Node.js 26.13.0 LTS and npm. The 1.4.0 CLI candidate runs on
+Linux, macOS and Windows without needing procfs, Python or Go. The examples
+below use Bash, available in Git Bash on Windows. Verify the published release
+and immutable source SHA before installing; do not use an unpublished candidate
+as if it were a release.
 
-## Portability and trust boundary of the next CLI
+## Portability and trust boundary in 1.4.0
 
 **Immutable 1.3.0 still requires Linux with accessible `/proc/self/fd`.**
-The ongoing post-1.3.0 Node.js implementation removes that requirement and
-does not require Python, Go or precompiled helpers for local installation.
-It is being qualified on Linux, macOS and Windows. Do not attribute these
-capabilities to the existing 1.3.0 release.
+The Node.js 1.4.0 candidate removes that requirement and does not need
+Python, Go or precompiled helpers. Linux, macOS and Windows qualification
+passed at the reviewed source commit. Do not attribute these improvements to
+release 1.3.0.
 
 The portable CLI assumes a trusted local Git checkout with no hostile process
 modifying its directories concurrently. It detects existing symlinks/junctions,
@@ -35,8 +39,8 @@ Run from a workspace directory. Replace OWNER/REPO with your repository. If you 
 ```bash
 REPOSITORY="OWNER/REPO"
 git clone https://github.com/cedricmenec/asf-agent-kits.git agent-kits
-git -C agent-kits fetch origin tag kits/opencode-openspec/v1.2.0
-SOURCE_SHA="$(git -C agent-kits rev-parse 'kits/opencode-openspec/v1.2.0^{commit}')"
+git -C agent-kits fetch origin tag kits/opencode-openspec/v1.4.0
+SOURCE_SHA="$(git -C agent-kits rev-parse 'kits/opencode-openspec/v1.4.0^{commit}')"
 git -C agent-kits switch --detach "$SOURCE_SHA"
 git clone "https://github.com/$REPOSITORY.git" target-repo
 SOURCE="$(pwd)/agent-kits"
@@ -45,7 +49,7 @@ CONFIG="$(pwd)/agentkit-config.json"
 cp "$SOURCE/kits/opencode-openspec/mvp-config.example.json" "$CONFIG"
 ```
 
-Resolve the immutable 1.2.0 release tag once, then compare the full source SHA and release-manifest.json digest with the published release before executing the installer. The CLI reads Git objects at this commit. It does not authenticate the publisher.
+After publication, resolve the immutable 1.4.0 release tag once, then compare the full source SHA and release-manifest.json digest with the published release before executing the installer. The CLI reads Git objects at this commit. It does not authenticate the publisher.
 
 ## Prepare the Node installer
 
@@ -70,12 +74,12 @@ Keep using the same Bash session so the variables remain available.
 
 ```bash
 git -C "$TARGET" status --short
-git -C "$TARGET" switch -c chore/install-agentkit-1.2.0
+git -C "$TARGET" switch -c chore/install-agentkit-1.4.0
 BASE_SHA="$(git -C "$TARGET" rev-parse HEAD)"
 kit_install() {
   node "$SOURCE/bin/asf-agentkit" install \
     --repo "$REPOSITORY" --checkout "$TARGET" \
-    --kit opencode-openspec --version 1.2.0 \
+    --kit opencode-openspec --version 1.4.0 \
     --source "$SOURCE" --source-commit "$SOURCE_SHA" \
     --config "$CONFIG" "$@"
 }
