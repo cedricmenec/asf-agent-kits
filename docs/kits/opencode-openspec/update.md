@@ -50,6 +50,21 @@ git -C "$TARGET" diff
 
 Run the project checks, review the managed-file and lock changes, then commit and open a PR. The command makes no commit or push and starts no model.
 
+## Portable CLI security model (next release, not 1.3.0)
+
+For the Node-only post-1.3.0 CLI, **stop all concurrent writers** to the
+target checkout before `install` or `upgrade`, and work on a dedicated
+branch in an isolated workspace. Existing links, hardlinks, collisions,
+unexpected managed content or unexpected Git state are rejected. Temporary
+replacement and rollback are best effort, not a crash-proof transaction.
+
+**Residual TOCTOU:** a hostile process able to replace a parent directory
+after the CLI checks it and before the write may redirect a file operation
+outside the checkout. The portable Node path-based approach does not offer the
+atomic directory-handle guarantees of the 1.3.0 Linux implementation.
+Do not rely on it in multi-tenant or adversarial shared workspaces.
+Read the [risk matrix](limits.md#local-filesystem-security-and-residual-toctou-risk-unreleased-node-cli).
+
 ## Conflicts
 
 Modified managed files, unmanaged collisions and unsupported removals can block an upgrade. Preserve local changes and compare them with the old source and new source. Do not delete the lock or force an overwrite to skip the conflict.
