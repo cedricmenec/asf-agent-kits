@@ -1,4 +1,16 @@
-/** Linux directory-descriptor anchored operations. No pathname fallback. */
+/**
+ * Portable, dependency-free managed-file I/O for a trusted local checkout.
+ *
+ * THREAT MODEL: another hostile process must NOT concurrently mutate parent
+ * directories. Parent checks are pathname-based and cannot prevent TOCTOU
+ * symlink/junction replacement between validation and a filesystem call.
+ * This module is not a containment boundary on a hostile shared workspace.
+ *
+ * Retained checks: safe relative paths, ordinary parents and files, symlink
+ * rejection at inspection time, hardlink rejection, bounded stable reads,
+ * case-collision checks, exclusive creation, content-checked replacement
+ * via a unique temporary file, and identity-checked best-effort rollback.
+ */
 import {
   fs,
   path,
@@ -10,237 +22,216 @@ import {
   MAX_FILE,
   nonce,
 } from "./common.mjs";
+
 const C = fs.constants;
-const dirFlags = C.O_RDONLY | C.O_DIRECTORY | C.O_NOFOLLOW;
-export function anchored(fd, name) {
-  requireThat(
-    Number.isInteger(fd) &&
-      fd >= 0 &&
-      typeof name === "string" &&
-      !name.includes("/") &&
-      name !== "." &&
-      name !== "..",
-    "Invalid anchored name",
-  );
-  return `/proc/self/fd/${fd}/${name}`;
+const noFollow = C.O_NOFOLLOW || 0;
+const nonblock = C.O_NONBLOCK || 0;
+
+function notFound(error) {
+  return error?.code === "ENOENT";
 }
-export function openRoot(root) {
-  requireThat(
-    process.platform === "linux" && C.O_NOFOLLOW && C.O_DIRECTORY,
-    "Safe operations require Linux/WSL2 and procfs",
-  );
-  root = safeRoot(root);
-  const before = fs.lstatSync(root, { bigint: true });
-  const fd = fs.openSync(root, dirFlags);
-  try {
-    requireThat(
-      identity(before) === identity(fs.fstatSync(fd, { bigint: true })),
-      "Root changed before opening",
-    );
-    requireThat(
-      identity(fs.statSync(`/proc/self/fd/${fd}`, { bigint: true })) ===
-        identity(fs.fstatSync(fd, { bigint: true })),
-      "procfs descriptor unavailable",
-    );
-    return fd;
-  } catch (e) {
-    fs.closeSync(fd);
-    throw new Error(
-      "Safe filesystem operations require accessible procfs descriptors",
-    );
-  }
-}
-export function managedIdentity(root, relative) {
-  const fd = parentFd(root, relative);
-  try {
-    return identity(
-      fs.lstatSync(anchored(fd, relative.split("/").at(-1)), { bigint: true }),
-    );
-  } finally {
-    fs.closeSync(fd);
-  }
-}
-export function parentFd(root, relative, create = false) {
+
+function inspectParent(root, relative, create = false) {
   safePath(relative);
-  let fd = openRoot(root);
-  try {
-    for (const name of relative.split("/").slice(0, -1)) {
-      requireThat(
-        !fs
-          .readdirSync(`/proc/self/fd/${fd}`)
-          .some((n) => n.toLowerCase() === name.toLowerCase() && n !== name),
-        "Case-colliding directory",
-      );
-      const p = anchored(fd, name);
-      let next;
-      try {
-        next = fs.openSync(p, dirFlags);
-      } catch (e) {
-        if (e.code !== "ENOENT" || !create) throw e;
-        fs.mkdirSync(p, { mode: 0o700 });
-        next = fs.openSync(p, dirFlags);
-      }
-      fs.closeSync(fd);
-      fd = next;
+  let directory = safeRoot(root);
+  const parts = relative.split("/");
+  for (const part of parts.slice(0, -1)) {
+    requireThat(
+      !fs.readdirSync(directory).some((name) =>
+        name.toLowerCase() === part.toLowerCase() && name !== part),
+      "Case-colliding directory",
+    );
+    const next = path.join(directory, part);
+    let stat;
+    try {
+      stat = fs.lstatSync(next, { bigint: true });
+    } catch (error) {
+      if (!notFound(error) || !create) throw error;
+      fs.mkdirSync(next, { mode: 0o700 });
+      stat = fs.lstatSync(next, { bigint: true });
     }
-    return fd;
-  } catch (e) {
+    requireThat(
+      stat.isDirectory() && !stat.isSymbolicLink(),
+      "Non-directory or symlink parent",
+    );
+    directory = next;
+  }
+  const leaf = parts.at(-1);
+  requireThat(
+    !fs.readdirSync(directory).some((name) =>
+      name.toLowerCase() === leaf.toLowerCase() && name !== leaf),
+    "Case-colliding file",
+  );
+  return { file: path.join(directory, leaf), directory };
+}
+
+function checkedStat(root, relative) {
+  const { file } = inspectParent(root, relative);
+  return fs.lstatSync(file, { bigint: true });
+}
+
+function regular(stat) {
+  requireThat(
+    stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1n &&
+      stat.size <= BigInt(MAX_FILE),
+    "Non-regular, linked or oversized managed file",
+  );
+}
+
+function unchangedPath(root, relative, before) {
+  const now = checkedStat(root, relative);
+  requireThat(
+    identity(now) === identity(before) && stamp(now) === stamp(before),
+    "Managed path changed during operation",
+  );
+}
+
+function checkedOpen(root, relative) {
+  const { file } = inspectParent(root, relative);
+  const byPath = fs.lstatSync(file, { bigint: true });
+  regular(byPath);
+  const fd = fs.openSync(file, C.O_RDONLY | noFollow | nonblock);
+  try {
+    const before = fs.fstatSync(fd, { bigint: true });
+    regular(before);
+    requireThat(
+      identity(byPath) === identity(before) &&
+        stamp(byPath) === stamp(before),
+      "Managed file changed before opening",
+    );
+    return { fd, before };
+  } catch (error) {
     fs.closeSync(fd);
-    throw e;
+    throw error;
   }
 }
+
+export function managedIdentity(root, relative) {
+  const stat = checkedStat(root, relative);
+  regular(stat);
+  return identity(stat);
+}
+
 export function observe(root, relative) {
-  let fd;
+  let opened;
   try {
-    fd = parentFd(root, relative);
-  } catch (e) {
-    if (e.code === "ENOENT") return null;
-    throw e;
+    opened = checkedOpen(root, relative);
+  } catch (error) {
+    if (notFound(error)) return null;
+    throw error;
   }
+  const { fd, before } = opened;
   try {
-    const leaf = relative.split("/").at(-1);
+    const data = Buffer.alloc(Number(before.size) + 1);
+    let count = 0;
+    let n;
+    do {
+      n = fs.readSync(fd, data, count, data.length - count, null);
+      count += n;
+    } while (n && count < data.length);
     requireThat(
-      !fs
-        .readdirSync(`/proc/self/fd/${fd}`)
-        .some((n) => n.toLowerCase() === leaf.toLowerCase() && n !== leaf),
-      "Case-colliding file",
+      count === Number(before.size) &&
+        stamp(before) === stamp(fs.fstatSync(fd, { bigint: true })),
+      "Managed file changed during read",
     );
-    let file;
-    try {
-      file = fs.openSync(
-        anchored(fd, leaf),
-        C.O_RDONLY | C.O_NOFOLLOW | C.O_NONBLOCK,
-      );
-    } catch (e) {
-      if (e.code === "ENOENT") return null;
-      throw e;
-    }
-    try {
-      const before = fs.fstatSync(file, { bigint: true });
-      requireThat(
-        before.isFile() &&
-          before.nlink === 1n &&
-          before.size <= BigInt(MAX_FILE),
-        "Non-regular, linked or oversized managed file",
-      );
-      const data = Buffer.alloc(Number(before.size) + 1);
-      let count = 0,
-        n;
-      do {
-        n = fs.readSync(file, data, count, data.length - count, null);
-        count += n;
-      } while (n && count < data.length);
-      requireThat(
-        count === Number(before.size) &&
-          stamp(before) === stamp(fs.fstatSync(file, { bigint: true })),
-        "Managed file changed during read",
-      );
-      return data.subarray(0, count);
-    } finally {
-      fs.closeSync(file);
-    }
+    unchangedPath(root, relative, before);
+    return data.subarray(0, count);
   } finally {
     fs.closeSync(fd);
   }
 }
-export function recoverCreated(root, relative, id) {
-  const fd = parentFd(root, relative);
+
+export function recoverCreated(root, relative, expectedIdentity) {
   try {
-    const p = anchored(fd, relative.split("/").at(-1));
-    try {
-      const s = fs.lstatSync(p, { bigint: true });
-      if (s.isFile() && identity(s) === id) {
-        fs.unlinkSync(p);
-        fs.fsyncSync(fd);
-      }
-    } catch (e) {
-      if (e.code !== "ENOENT") throw e;
-    }
-  } finally {
-    fs.closeSync(fd);
+    const stat = checkedStat(root, relative);
+    regular(stat);
+    if (identity(stat) !== expectedIdentity) return;
+    const { file } = inspectParent(root, relative);
+    unchangedPath(root, relative, stat);
+    fs.unlinkSync(file);
+  } catch (error) {
+    if (!notFound(error)) throw error;
   }
 }
+
 export function exclusiveFile(root, relative, bytes) {
+  requireThat(Buffer.isBuffer(bytes) && bytes.length <= MAX_FILE,
+    "Managed file bytes required within size limit");
   requireThat(observe(root, relative) === null, "Create destination exists");
-  const fd = parentFd(root, relative, true);
-  let file, id;
+  const { file } = inspectParent(root, relative, true);
+  let fd;
+  let created;
   try {
-    const leaf = relative.split("/").at(-1);
-    requireThat(
-      !fs
-        .readdirSync(`/proc/self/fd/${fd}`)
-        .some((n) => n.toLowerCase() === leaf.toLowerCase()),
-      "Create destination appeared",
-    );
-    file = fs.openSync(
-      anchored(fd, leaf),
-      C.O_WRONLY | C.O_CREAT | C.O_EXCL | C.O_NOFOLLOW,
-      0o600,
-    );
-    id = identity(fs.fstatSync(file, { bigint: true }));
-    fs.writeFileSync(file, bytes);
-    fs.fsyncSync(file);
+    fd = fs.openSync(file,
+      C.O_WRONLY | C.O_CREAT | C.O_EXCL | noFollow, 0o600);
+    created = identity(fs.fstatSync(fd, { bigint: true }));
+    fs.writeFileSync(fd, bytes);
     fs.fsyncSync(fd);
-    return id;
-  } catch (e) {
-    if (id) {
-      const p = anchored(fd, relative.split("/").at(-1));
-      if (identity(fs.lstatSync(p, { bigint: true })) === id) fs.unlinkSync(p);
+    const after = fs.fstatSync(fd, { bigint: true });
+    regular(after);
+    unchangedPath(root, relative, after);
+    return created;
+  } catch (error) {
+    if (created) {
+      try {
+        const stat = checkedStat(root, relative);
+        if (identity(stat) === created) fs.unlinkSync(file);
+      } catch {
+        // Never remove an unknown or redirected path to hide the first error.
+      }
     }
-    throw e;
+    throw error;
   } finally {
-    if (file !== undefined) fs.closeSync(file);
-    fs.closeSync(fd);
+    if (fd !== undefined) fs.closeSync(fd);
   }
 }
+
 export function replaceManaged(root, relative, expected, replacement) {
-  const fd = parentFd(root, relative),
-    leaf = relative.split("/").at(-1),
-    p = anchored(fd, leaf),
-    temp = anchored(fd, ".asf-agentkit-upgrade-" + nonce());
+  requireThat(
+    Buffer.isBuffer(expected) && Buffer.isBuffer(replacement) &&
+      expected.length <= MAX_FILE && replacement.length <= MAX_FILE,
+    "Bounded managed file bytes required",
+  );
+  const { file, directory } = inspectParent(root, relative);
+  const temp = path.join(directory, ".asf-agentkit-upgrade-" + nonce());
+  const { fd, before } = checkedOpen(root, relative);
+  try {
+    requireThat(fs.readFileSync(fd).equals(expected) &&
+      stamp(before) === stamp(fs.fstatSync(fd, { bigint: true })),
+    "Managed file changed before upgrade");
+  } finally {
+    fs.closeSync(fd);
+  }
   let staged = false;
   try {
-    const file = fs.openSync(p, C.O_RDONLY | C.O_NOFOLLOW | C.O_NONBLOCK);
-    let before;
-    try {
-      before = fs.fstatSync(file, { bigint: true });
-      requireThat(
-        before.isFile() &&
-          before.nlink === 1n &&
-          before.size <= BigInt(MAX_FILE),
-        "Unsafe replacement target",
-      );
-      const data = fs.readFileSync(file);
-      requireThat(
-        data.equals(expected) &&
-          stamp(before) === stamp(fs.fstatSync(file, { bigint: true })),
-        "Managed file changed before upgrade",
-      );
-    } finally {
-      fs.closeSync(file);
-    }
-    const out = fs.openSync(
-      temp,
-      C.O_WRONLY | C.O_CREAT | C.O_EXCL | C.O_NOFOLLOW,
-      Number(before.mode & 0o777n),
-    );
+    const mode = Number(before.mode & 0o777n);
+    const out = fs.openSync(temp,
+      C.O_WRONLY | C.O_CREAT | C.O_EXCL | noFollow, mode);
     staged = true;
     try {
       fs.writeFileSync(out, replacement);
+      if (process.platform !== "win32") fs.fchmodSync(out, mode);
       fs.fsyncSync(out);
     } finally {
       fs.closeSync(out);
     }
-    requireThat(
-      stamp(fs.lstatSync(p, { bigint: true })) === stamp(before),
-      "Target changed before replace",
-    );
-    fs.renameSync(temp, p);
+    unchangedPath(root, relative, before);
+    const next = inspectParent(root, relative);
+    requireThat(next.file === file && next.directory === directory,
+      "Managed parent moved before replace");
+    fs.renameSync(temp, file);
     staged = false;
-    fs.fsyncSync(fd);
-    return identity(fs.lstatSync(p, { bigint: true }));
+    const after = checkedStat(root, relative);
+    regular(after);
+    return identity(after);
   } finally {
-    if (staged) fs.unlinkSync(temp);
-    fs.closeSync(fd);
+    if (staged) {
+      try {
+        const now = inspectParent(root, relative);
+        if (now.directory === directory) fs.unlinkSync(temp);
+      } catch {
+        // Leave an unexpected path untouched for manual recovery.
+      }
+    }
   }
 }
