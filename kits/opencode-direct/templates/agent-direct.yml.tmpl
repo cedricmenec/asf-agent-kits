@@ -93,17 +93,9 @@ jobs:
         with:
           node-version: '26.13.0'
       - name: Load trusted policies and select exact observed branch
-        env:
-          ASF_GIT_READ_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          # Only this trusted step receives the read-only GitHub Actions token.
-          # The credential is ephemeral: never write it into .git/config.
-          test -n "$ASF_GIT_READ_TOKEN" || { echo "::error::GitHub read token unavailable"; exit 1; }
-          export GIT_CONFIG_COUNT=1
-          export GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
-          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$ASF_GIT_READ_TOKEN" | base64 -w0)"
           test -n "$OPENROUTER_API_KEY" || { echo "::error::Provider key unavailable"; exit 1; }
           for file in scope.mjs model-policy.mjs phase.sh; do
             git show "$GITHUB_SHA:.asf/agentkit/direct/$file" > "$RUNNER_TEMP/$file"
