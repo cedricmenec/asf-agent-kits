@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import os from "node:os";
+import { spawnSync } from "node:child_process";
 import { fs, path, ROOT, git, strictFile, canonical } from "../tools/node/common.mjs";
 import * as cli from "../tools/asf_agentkit_cli.mjs";
 import { render_mvp } from "../tools/render_mvp_kit.mjs";
@@ -111,3 +112,37 @@ for (const kit of ["opencode-openspec", "opencode-direct"]) {
       assert.equal(fs.readFileSync(path.join(target, "README.md"), "utf8"), "Preserved content\n");
     }));
 }
+
+// Exercise the real shipped binary entry point, not just imported helpers.
+test("#119: actual Node CLI dry-run, apply, status, doctor on " + process.platform, () =>
+  fixture((root) => {
+    const { target, cfg } = setup(root);
+    const cfgPath = path.join(root, "config.json");
+    fs.writeFileSync(cfgPath, JSON.stringify(cfg));
+    const head = git(target, "rev-parse", "HEAD").toString().trim();
+    const sourceSha = git(ROOT, "rev-parse", "HEAD").toString().trim();
+    const entry = path.join(ROOT, "bin/asf-agentkit");
+    const baseArgs = [
+      "--repo", cfg.targetRepository, "--checkout", target,
+      "--kit", "opencode-openspec", "--version", "1.3.0",
+      "--source", ROOT, "--source-commit", sourceSha, "--config", cfgPath,
+    ];
+    function call(args) {
+      const result = spawnSync(process.execPath, [entry, ...args], {
+        encoding: "utf8", timeout: 120000, maxBuffer: 16 * 1048576,
+      });
+      assert.equal(result.status, 0, result.stderr || result.stdout);
+      return JSON.parse(result.stdout);
+    }
+    const dry = call(["install", ...baseArgs, "--dry-run"]);
+    assert.equal(dry.status, "proposed");
+    assert.equal(dry.writesPerformed, false);
+    const applied = call(["install", ...baseArgs, "--apply", "--expected-head", head]);
+    assert.equal(applied.status, "applied-locally-uncommitted");
+    assert.equal(applied.createdFiles, 10);
+    const status = call(["status", "--repo", cfg.targetRepository, "--checkout", target]);
+    assert.equal(status.status, "hash-match");
+    const doctor = call(["doctor", "--repo", cfg.targetRepository, "--checkout", target,
+      "--config", cfgPath]);
+    assert.equal(doctor.localChecks.managedWorkflowPresent, true);
+  }));
