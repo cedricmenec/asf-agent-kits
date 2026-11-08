@@ -4,6 +4,33 @@ Install the kit through a normal branch and PR. Plan for setup: this release has
 
 Use Linux or Ubuntu in WSL2 for the local CLI. Its safe file operations require POSIX features such as O\_NOFOLLOW and O\_DIRECTORY. Native Windows is not supported for those operations. Use Git, Node.js 26.13.0 LTS, npm and Bash. Safe filesystem operations also require accessible Linux procfs directory descriptors. Release 1.2.0 pins Node 26.13.0 for both the installer and executor.
 
+## Secure filesystem portability qualification (post-1.3.0 work)
+
+The current immutable **1.3.0** release is Linux/WSL2-only for managed
+filesystem writes because its Node.js backend requires an accessible
+`/proc/self/fd` namespace. A prototype after 1.3.0 also probes `/dev/fd`
+and uses that path **only when it is confirmed to traverse the already-open
+directory descriptor**.
+
+This is **not yet a platform-independent installer**:
+
+| Environment | Verified status |
+| --- | --- |
+| Linux with procfs | Existing descriptor-anchored operations supported |
+| Linux where `/proc/self/fd` lookup is unavailable but `/dev/fd` is usable | Descriptor-anchored fallback tested with injected missing procfs |
+| Linux without either usable descriptor namespace | Deliberate refusal without writes; requires a native `openat`-style backend or a separate secure transport |
+| macOS 15 | `/dev/fd` exists but is not traversable by this Node implementation; refusal verified on runner |
+| Windows native | No safe parent-descriptor backend in this implementation; refusal verified on runner |
+
+**Security:** Do not replace this failure with `lstat` followed by a normal
+pathname write; another process can replace a parent with a symlink between
+checks. Platform support may only be advertised after native handle-relative
+operations or another equally safe verified transport are implemented and
+tested against races, links, rollback and upgrade.
+
+Follow [#119](https://github.com/cedricmenec/asf-agent-kits/issues/119)
+for the remaining blocker and its acceptance gates.
+
 ## Before you start
 
 Your target repository needs an initial commit, an application, package.json, package-lock.json, a working npm check script, OpenSpec context at openspec/config.yaml and a backlog task directory. It also needs its own PR CI. The kit installs none of these product files.
