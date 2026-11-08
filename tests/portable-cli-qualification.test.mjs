@@ -124,7 +124,8 @@ test("#119: actual Node CLI dry-run, apply, status, doctor on " + process.platfo
     const entry = path.join(ROOT, "bin/asf-agentkit");
     const baseArgs = [
       "--repo", cfg.targetRepository, "--checkout", target,
-      "--kit", "opencode-openspec", "--version", "1.3.0",
+      "--kit", "opencode-openspec", "--version",
+      strictFile(path.join(ROOT, "kits/opencode-openspec/version.json")).kitVersion,
       "--source", ROOT, "--source-commit", sourceSha, "--config", cfgPath,
     ];
     function call(args) {

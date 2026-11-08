@@ -4,33 +4,33 @@ Update through a clean branch and normal PR. Keep local edits safe and read the 
 
 ## Before updating
 
-Read the release notes, check the new source commit and preserve your current lock and configuration in Git. Use Linux/WSL2, stop overlapping writes to the checkout and start with a clean working tree.
+Read the release notes, check the new source commit and preserve your current lock and configuration in Git. Use a dedicated, isolated checkout on Linux, macOS or Windows, stop overlapping writes and start with a clean working tree.
 
 Release 1.2.0 removes Python and requires Node 26.13.0 LTS (supported range >=26.13.0 <27). Align the product package engines, root lockfile engines, .nvmrc, .npmrc (engine-strict=true) and project CI before checking the upgrade. Dependencies and product scripts need no version changes. Auto retains the 1.1.0 behavior: up to three agent phases, with no dollar cap.
 
-Use the reviewed Node installer checkout from Install and run `npm ci --ignore-scripts` there before calling the CLI. Use the published 1.2.0 immutable source commit. The CLI can read historical release Git objects without executing their old installer.
+Use the reviewed Node installer checkout from Install and run `npm ci --ignore-scripts` there before calling the CLI. For 1.4.0, use its published immutable source commit only after publication and verification. The CLI can read historical release Git objects without executing their old installer.
 
 ## Preview and apply
 
-Use the same workspace layout as the install guide. Replace the values for your repository and paths. The command below targets release 1.2.0 from an older installed version.
+Use the same workspace layout as the install guide. Replace the values for your repository and paths. The command below targets release 1.4.0 from an older installed version.
 
 ```bash
 REPOSITORY="OWNER/REPO"
 SOURCE="/absolute/path/to/agent-kits"
 TARGET="/absolute/path/to/target-repo"
 CONFIG="/absolute/path/to/agentkit-config.json"
-git -C "$SOURCE" fetch origin tag kits/opencode-openspec/v1.2.0
-SOURCE_SHA="$(git -C "$SOURCE" rev-parse 'kits/opencode-openspec/v1.2.0^{commit}')"
+git -C "$SOURCE" fetch origin tag kits/opencode-openspec/v1.4.0
+SOURCE_SHA="$(git -C "$SOURCE" rev-parse 'kits/opencode-openspec/v1.4.0^{commit}')"
 # Verify SHA and manifest against the published release before running code.
 git -C "$SOURCE" switch --detach "$SOURCE_SHA"
 npm --prefix "$SOURCE" ci --ignore-scripts
 
-git -C "$TARGET" switch -c chore/upgrade-agentkit-1.2.0
+git -C "$TARGET" switch -c chore/upgrade-agentkit-1.4.0
 BASE_SHA="$(git -C "$TARGET" rev-parse HEAD)"
 kit_upgrade() {
   node "$SOURCE/bin/asf-agentkit" upgrade \
     --repo "$REPOSITORY" --checkout "$TARGET" \
-    --kit opencode-openspec --version 1.2.0 \
+    --kit opencode-openspec --version 1.4.0 \
     --source "$SOURCE" --source-commit "$SOURCE_SHA" \
     --config "$CONFIG" "$@"
 }
@@ -50,9 +50,9 @@ git -C "$TARGET" diff
 
 Run the project checks, review the managed-file and lock changes, then commit and open a PR. The command makes no commit or push and starts no model.
 
-## Portable CLI security model (next release, not 1.3.0)
+## Portable CLI security model in 1.4.0
 
-For the Node-only post-1.3.0 CLI, **stop all concurrent writers** to the
+For the Node-only 1.4.0 CLI, **stop all concurrent writers** to the
 target checkout before `install` or `upgrade`, and work on a dedicated
 branch in an isolated workspace. Existing links, hardlinks, collisions,
 unexpected managed content or unexpected Git state are rejected. Temporary
