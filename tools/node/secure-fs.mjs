@@ -1,4 +1,4 @@
-/** Linux directory-descriptor anchored operations. No pathname fallback. */
+/** Descriptor-anchored operations. No unverified pathname fallback. */
 import {
   fs,
   path,
@@ -12,6 +12,25 @@ import {
 } from "./common.mjs";
 const C = fs.constants;
 const dirFlags = C.O_RDONLY | C.O_DIRECTORY | C.O_NOFOLLOW;
+const mounts = ['/proc/self/fd', '/dev/fd'];
+// Verify that the descriptor namespace points to this open directory,
+// and supports traversal. Never fall back to a user-controlled pathname.
+function descriptorDirectory(fd) {
+  const actual = fs.fstatSync(fd, { bigint: true });
+  requireThat(actual.isDirectory(), 'Expected directory descriptor');
+  for (const base of mounts) {
+    const candidate = base + '/' + fd;
+    try {
+      if (identity(fs.statSync(candidate, { bigint: true })) !== identity(actual)) continue;
+      const probe = fs.openSync(candidate + '/.', dirFlags);
+      try {
+        if (identity(fs.fstatSync(probe, { bigint: true })) !== identity(actual)) continue;
+      } finally { fs.closeSync(probe); }
+      return candidate;
+    } catch { /* another descriptor namespace may be available */ }
+  }
+  throw new Error('Secure descriptor namespace unavailable (/proc/self/fd or /dev/fd); no pathname fallback');
+}
 export function anchored(fd, name) {
   requireThat(
     Number.isInteger(fd) &&
@@ -22,12 +41,12 @@ export function anchored(fd, name) {
       name !== "..",
     "Invalid anchored name",
   );
-  return `/proc/self/fd/${fd}/${name}`;
+  return descriptorDirectory(fd) + '/' + name;
 }
 export function openRoot(root) {
   requireThat(
-    process.platform === "linux" && C.O_NOFOLLOW && C.O_DIRECTORY,
-    "Safe operations require Linux/WSL2 and procfs",
+    ["linux", "darwin"].includes(process.platform) && C.O_NOFOLLOW && C.O_DIRECTORY,
+    "Secure directory-relative operations require POSIX descriptor support",
   );
   root = safeRoot(root);
   const before = fs.lstatSync(root, { bigint: true });
@@ -37,16 +56,12 @@ export function openRoot(root) {
       identity(before) === identity(fs.fstatSync(fd, { bigint: true })),
       "Root changed before opening",
     );
-    requireThat(
-      identity(fs.statSync(`/proc/self/fd/${fd}`, { bigint: true })) ===
-        identity(fs.fstatSync(fd, { bigint: true })),
-      "procfs descriptor unavailable",
-    );
+    descriptorDirectory(fd);
     return fd;
   } catch (e) {
     fs.closeSync(fd);
     throw new Error(
-      "Safe filesystem operations require accessible procfs descriptors",
+      "Safe filesystem descriptor operations unavailable",
     );
   }
 }
@@ -67,7 +82,7 @@ export function parentFd(root, relative, create = false) {
     for (const name of relative.split("/").slice(0, -1)) {
       requireThat(
         !fs
-          .readdirSync(`/proc/self/fd/${fd}`)
+          .readdirSync(descriptorDirectory(fd))
           .some((n) => n.toLowerCase() === name.toLowerCase() && n !== name),
         "Case-colliding directory",
       );
@@ -101,7 +116,7 @@ export function observe(root, relative) {
     const leaf = relative.split("/").at(-1);
     requireThat(
       !fs
-        .readdirSync(`/proc/self/fd/${fd}`)
+        .readdirSync(descriptorDirectory(fd))
         .some((n) => n.toLowerCase() === leaf.toLowerCase() && n !== leaf),
       "Case-colliding file",
     );
@@ -168,7 +183,7 @@ export function exclusiveFile(root, relative, bytes) {
     const leaf = relative.split("/").at(-1);
     requireThat(
       !fs
-        .readdirSync(`/proc/self/fd/${fd}`)
+        .readdirSync(descriptorDirectory(fd))
         .some((n) => n.toLowerCase() === leaf.toLowerCase()),
       "Create destination appeared",
     );
