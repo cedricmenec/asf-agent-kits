@@ -1,31 +1,25 @@
 # Releases and evidence
 
-The last published OpenSpec kit is 1.3.0. Its Node.js installer requires Linux
-with accessible procfs. Check the immutable source and the release manifest
-before any installation or upgrade. A portable Node-only successor is under
-qualification, **not yet published**.
+The 1.4.0 source candidate includes both blocking fixes #118 and #119. The tag
+and release asset must be published **only after independent CI and an exact
+source-commit manifest check**. Do not describe a candidate as published until
+the GitHub release exists and its source SHA and manifest agree.
 
-## Proposed 1.4.0 (NOT PUBLISHED)
+## 1.4.0 (candidate; publication pending)
 
-**Why 1.4.0 instead of 1.3.1:** the installer removes its Linux-only fd-relative
-filesystem security boundary in favor of a portable Node.js implementation.
-This is a meaningful, user-visible change in supported environments **and**
-in the residual security model, not only a bug fix. A minor release, together
-with a clear migration note, makes that trade-off visible.
+- **Private Git repositories:** authenticated read-only ref checks through the
+  scoped GitHub Actions token; ASF Flow App remains the isolated writer of draft PRs (#118).
+- **Portable Node.js CLI:** no Linux `/proc/self/fd`, Python or Go requirement
+  for install/status/doctor/upgrade; qualified on Linux, macOS and Windows (#119).
+- **Security boundary changed:** the portable pathname-based CLI rejects
+  unsafe paths and existing links but accepts residual TOCTOU risk if an
+  adversary can change parent directories concurrently. Use a trusted isolated
+  checkout, not a hostile multi-tenant workspace.
+- The 1.4.0 release requires a source SHA, immutable tag
+  `kits/opencode-openspec/v1.4.0`, generated `release-manifest.json` asset,
+  and documented SHA-256. Never retag an earlier release.
 
-Proposed scope:
-- Issue #118: authenticated read-only Git branch checks on private repositories,
-  with GitHub App publication credentials still isolated from OpenCode.
-- Issue #119: Node-only managed-file I/O without procfs, Go or Python runtime
-  requirements; Linux, macOS and Windows fixture qualification.
-- Preserve managed-file hash checks, exclusive create, symlink/hardlink refusal,
-  collisions, conflict refusal and best-effort rollback.
-- **Explicit residual TOCTOU risk:** do not run against a checkout writable
-  by a hostile concurrent process. See [risk matrix](limits.md#local-filesystem-security-and-residual-toctou-risk-unreleased-node-cli).
-
-Release gate remains closed until the new version metadata, source SHA,
-immutable tag, complete manifest and provenance evidence are prepared and
-reviewed on an exact CI-green commit. Do not retag 1.3.0.
+[Risk matrix](limits.md#local-filesystem-security-and-residual-toctou-risk-unreleased-node-cli) · [Release preparation workflow](../../../.github/workflows/prepare-1-4-0-manifest.yml)
 
 ## 1.3.0 (published)
 
