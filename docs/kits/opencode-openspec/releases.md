@@ -1,6 +1,42 @@
 # Releases and evidence
 
-Use release 1.2.0 for new installations. Check the published source and read the limits before running an agent.
+The last published OpenSpec kit is 1.3.0. Its Node.js installer requires Linux
+with accessible procfs. Check the immutable source and the release manifest
+before any installation or upgrade. A portable Node-only successor is under
+qualification, **not yet published**.
+
+## Proposed 1.4.0 (NOT PUBLISHED)
+
+**Why 1.4.0 instead of 1.3.1:** the installer removes its Linux-only fd-relative
+filesystem security boundary in favor of a portable Node.js implementation.
+This is a meaningful, user-visible change in supported environments **and**
+in the residual security model, not only a bug fix. A minor release, together
+with a clear migration note, makes that trade-off visible.
+
+Proposed scope:
+- Issue #118: authenticated read-only Git branch checks on private repositories,
+  with GitHub App publication credentials still isolated from OpenCode.
+- Issue #119: Node-only managed-file I/O without procfs, Go or Python runtime
+  requirements; Linux, macOS and Windows fixture qualification.
+- Preserve managed-file hash checks, exclusive create, symlink/hardlink refusal,
+  collisions, conflict refusal and best-effort rollback.
+- **Explicit residual TOCTOU risk:** do not run against a checkout writable
+  by a hostile concurrent process. See [risk matrix](limits.md#local-filesystem-security-and-residual-toctou-risk-unreleased-node-cli).
+
+Release gate remains closed until the new version metadata, source SHA,
+immutable tag, complete manifest and provenance evidence are prepared and
+reviewed on an exact CI-green commit. Do not retag 1.3.0.
+
+## 1.3.0 (published)
+
+- Published OpenCode/OpenSpec kit release with the Node.js catalogue and
+  OpenCode Direct co-installation capability.
+- **Linux/WSL2 with accessible `/proc/self/fd` required** for CLI managed
+  filesystem writes. No native macOS/Windows or procfs-free compatibility
+  was claimed by this release.
+- Tag: `kits/opencode-openspec/v1.3.0`.
+- For the exact source SHA and release asset digest, consult the
+  [published immutable release](https://github.com/cedricmenec/asf-agent-kits/releases/tag/kits/opencode-openspec/v1.3.0).
 
 ## 1.2.0
 

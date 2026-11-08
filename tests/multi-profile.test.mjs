@@ -10,7 +10,6 @@ import {
   hash,
   strictFile,
 } from "../tools/node/common.mjs";
-import { openRoot } from "../tools/node/secure-fs.mjs";
 import {
   render_mvp,
   profile_lock_path,
@@ -40,14 +39,7 @@ const commit = (r) => {
   return git(r, "rev-parse", "HEAD").toString().trim();
 };
 for (const order of [KIT_IDS, [...KIT_IDS].reverse()])
-  test("co-install and independently upgrade " + order.join(" then "), (t) => {
-    try {
-      fs.closeSync(openRoot(ROOT));
-    } catch {
-      assert.notEqual(process.env.CI, "true");
-      t.skip("Local broker lacks procfs");
-      return;
-    }
+  test("co-install and independently upgrade " + order.join(" then "), () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "multi-profile-"));
     try {
       git(root, "init", "-q");

@@ -16,6 +16,7 @@ Read the failed step and inspect the branch and PR before trying again. A failed
 | Branch moved | Default or agent branch changed after prepare | Inspect both refs and restart deliberately from the correct state |
 | Project checks failed | Tests and product environment | Read the failure; fix the cause before resuming |
 | Local CLI refuses file operations | Native Windows, symlink, hardlink or path collision | Use Linux/WSL2 and a regular clean checkout |
+| Portable CLI rejects path or file | Existing symlink/junction, hardlink, special file, unsafe path, collision or modified file | Use a clean isolated checkout; do not bypass guards or force an overwrite |
 | Install or upgrade blocked | Existing unmanaged files or changed managed files | Preserve edits and resolve the conflict in a reviewed branch |
 | Doctor says unknown | Missing access or no remote read requested | Check GitHub Settings manually; unknown is not a successful check |
 | PR absent after failed run | Execute/publish logs, work branch, provider usage | Establish what actually finished before another dispatch |

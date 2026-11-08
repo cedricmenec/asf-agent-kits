@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import os from "node:os";
 import { execFileSync } from "node:child_process";
 import { fs, path, ROOT } from "../tools/node/common.mjs";
-import { openRoot } from "../tools/node/secure-fs.mjs";
+import { openRoot } from "../tools/node/historical-fd.mjs";
 const cases = JSON.parse(gunzipSync(fs.readFileSync(new URL('./fixtures/node-migration/filesystem-reference.json.gz', import.meta.url))));
 let procfsAvailable = false;
 try {

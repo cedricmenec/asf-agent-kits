@@ -11,7 +11,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { inventory_fdrelative } from '../tools/inventory_fdrelative.mjs';
 import { verify_local_git_fixture } from '../tools/verify_local_git_fixture.mjs';
-import { openRoot } from '../tools/node/secure-fs.mjs';
+import { openRoot } from '../tools/node/historical-fd.mjs';
 import { closeSync } from 'node:fs';
 import { previewIntegratedOpenSpecCycle } from '../core/openspec-offline-cycle.mjs';
 import { previewLocalFixtureQualification } from '../core/local-fixture-qualification.mjs';

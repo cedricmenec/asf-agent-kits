@@ -4,6 +4,24 @@ Install the kit through a normal branch and PR. Plan for setup: this release has
 
 Use Linux or Ubuntu in WSL2 for the local CLI. Its safe file operations require POSIX features such as O\_NOFOLLOW and O\_DIRECTORY. Native Windows is not supported for those operations. Use Git, Node.js 26.13.0 LTS, npm and Bash. Safe filesystem operations also require accessible Linux procfs directory descriptors. Release 1.2.0 pins Node 26.13.0 for both the installer and executor.
 
+## Portability and trust boundary of the next CLI
+
+**Immutable 1.3.0 still requires Linux with accessible `/proc/self/fd`.**
+The ongoing post-1.3.0 Node.js implementation removes that requirement and
+does not require Python, Go or precompiled helpers for local installation.
+It is being qualified on Linux, macOS and Windows. Do not attribute these
+capabilities to the existing 1.3.0 release.
+
+The portable CLI assumes a trusted local Git checkout with no hostile process
+modifying its directories concurrently. It detects existing symlinks/junctions,
+hardlinks and unsafe paths, checks managed-file hashes and uses exclusive file
+creation and best-effort rollback. **It does not guarantee immunity to TOCTOU
+attacks**: an attacker able to replace a parent directory between inspection
+and an operation could redirect a write outside the checkout. Use an isolated
+workspace and do not run untrusted processes at the same time. For shared or
+hostile environments, stronger native directory-handle isolation is required.
+See [Limits, isolation and costs](limits.md).
+
 ## Before you start
 
 Your target repository needs an initial commit, an application, package.json, package-lock.json, a working npm check script, OpenSpec context at openspec/config.yaml and a backlog task directory. It also needs its own PR CI. The kit installs none of these product files.

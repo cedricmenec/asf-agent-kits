@@ -8,7 +8,7 @@ import {
   stamp,
   identity,
 } from "./node/common.mjs";
-import { openRoot, anchored } from "./node/secure-fs.mjs";
+import { openRoot, anchored } from "./node/historical-fd.mjs";
 export class FdInventoryError extends Error {}
 const safe = (p) =>
   typeof p === "string" &&
