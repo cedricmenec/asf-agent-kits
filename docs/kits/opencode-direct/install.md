@@ -24,6 +24,15 @@ node bin/asf-agentkit doctor --repo OWNER/REPO --checkout /path/to/target \
 
 `doctor` detects the installed profile from its lock. Direct does not require `openspec/config.yaml`. Hash match proves local file consistency, not publisher authenticity or administrative readiness. Upgrade uses the same `--kit opencode-direct` and requires a greater version, an approved plan digest and unchanged managed files.
 
+**Local installer security (portable Node candidate):** the CLI validates
+paths, parent directories and managed-file hashes and rejects existing links,
+hardlinks and unsafe replacements, but it cannot fully prevent a hostile
+concurrent process from changing a parent directory between inspection and
+writing (TOCTOU). Use a dedicated trusted checkout, no concurrent untrusted
+processes, a dry run and reviewed PR. This is not a safe multi-tenant
+filesystem isolation boundary. See the
+[shared risk matrix](../opencode-openspec/limits.md#local-filesystem-security-and-residual-toctou-risk-unreleased-node-cli).
+
 Before a paid run, independently review the installed `.asf/agentkit/direct/manual-acceptance.md`, App permissions, secrets and default-branch protections. Configuration and activation require separate administrative authorization. The target needs its real `package.json`, lockfile, npm check and backlog task; the installer does not generate an application or fake tests.
 
 After approved installation and setup, the owner opens Actions, selects **AgentKit OpenCode Direct (manual)** on the configured default branch, chooses the existing task ID and approved model, and dispatches only after explicitly authorizing the cost. The result is a draft PR on `agent/direct/<ID>`.
