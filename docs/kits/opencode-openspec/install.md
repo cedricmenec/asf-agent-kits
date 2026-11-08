@@ -49,7 +49,12 @@ CONFIG="$(pwd)/agentkit-config.json"
 cp "$SOURCE/kits/opencode-openspec/mvp-config.example.json" "$CONFIG"
 ```
 
-Resolve the published immutable 1.4.0 release tag once, then compare the full source SHA and release-manifest.json digest with the published release before executing the installer. The CLI reads Git objects at this commit. It does not authenticate the publisher.
+The commands above use the known published 1.4.0 release as an example. **After
+the 1.5.0 release has actually been published**, replace every occurrence of
+`1.4.0` in the versioned commands with `1.5.0`, and compare its full source SHA
+and release-manifest.json digest with the new GitHub Release. Do not use a
+release-preparation branch as if it were a published version. The CLI reads Git
+objects at the chosen exact commit; it does not authenticate the publisher.
 
 ## Prepare the Node installer
 

@@ -1,0 +1,72 @@
+# Read-only release evidence preparation. Never creates a tag or publishes a release.
+# Runs after a reviewed version.json change reaches main, or by manual dispatch.
+name: Prepare OpenSpec release manifest (non-paying)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - kits/opencode-openspec/version.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  manifest:
+    if: github.repository == 'cedricmenec/asf-agent-kits' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '26.13.0'
+          cache: npm
+      - name: Build manifest from immutable Git objects and check release identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          node tools/build_release_manifest.mjs --source . --source-commit "$GITHUB_SHA" > release-manifest.json
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const version = JSON.parse(readFileSync('kits/opencode-openspec/version.json', 'utf8'));
+          const kit = JSON.parse(readFileSync('kits/opencode-openspec/kit.json', 'utf8'));
+          const manifest = JSON.parse(readFileSync('release-manifest.json', 'utf8'));
+          const tag = 'kits/opencode-openspec/v' + version.kitVersion;
+          if (version.releaseStatus !== 'stable' || !/^\d+\.\d+\.\d+$/.test(version.kitVersion) ||
+              kit.release.version !== version.kitVersion || kit.release.tag !== tag ||
+              manifest.kitVersion !== version.kitVersion || manifest.releaseTag !== tag ||
+              manifest.sourceCommitSha !== process.env.GITHUB_SHA ||
+              !Array.isArray(manifest.artifacts) || manifest.artifacts.length < 40) {
+            throw Error('Release metadata, source SHA or artifact inventory is inconsistent');
+          }
+          console.log('Verified:', tag, manifest.sourceCommitSha, manifest.artifacts.length, 'artifacts');
+          NODE
+          release_version="$(node -p "require('./kits/opencode-openspec/version.json').kitVersion")"
+          notes="docs/kits/opencode-openspec/RELEASE_NOTES_$release_version.md"
+          test -s "$notes" || { echo '::error::Version-specific release notes missing'; exit 1; }
+          cp "$notes" "RELEASE_NOTES_$release_version.md"
+          sha256sum release-manifest.json | tee release-manifest.sha256
+          sha256sum -c release-manifest.sha256
+          {
+            echo "## OpenSpec $release_version release candidate"
+            echo "Exact source SHA: $GITHUB_SHA"
+            echo 'Manifest SHA-256:'
+            cat release-manifest.sha256
+            echo ''
+            echo 'Review all files before publishing an immutable release. This workflow performs no write operations.'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: opencode-openspec-release-evidence-${{ github.sha }}
+          path: |
+            release-manifest.json
+            release-manifest.sha256
+            RELEASE_NOTES_*.md
+          if-no-files-found: error
+          retention-days: 30
