@@ -49,6 +49,7 @@ test('#126 accepts executable code and deterministic tests with manual prose', (
   accepted('## Tasks\n- [x] Implement visually hidden labels and automated accessibility tests.\n');
   accepted('## Tasks\n- [ ] Build manual mode selector with Jest assertions.\n');
   accepted('## Tasks\n- [ ] Run automated Playwright screenshot comparisons in CI.\n');
+  accepted('## Tasks\n- [ ] Run automated Playwright accessibility tests in a real browser.\n');
   accepted('## Tasks\n- [ ] Test visually hidden labels. GIVEN a DOM label, WHEN the unit test runs, THEN it asserts the accessible name.\n');
 });
 

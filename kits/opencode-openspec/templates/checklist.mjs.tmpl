@@ -70,7 +70,9 @@ for (const [index, line] of lines.entries()) {
   // feature names such as "manual mode" or "visually hidden label".
   const humanAction = /\b(?:manually|manual(?:ly)?\s+(?:accept|check|confirm|inspect|review|test|validat\w*|verif\w*)|human\s+(?:acceptance|check|inspection|review|test|validation|verification)|manual acceptance|recette manuelle|validation humaine|vérifier manuellement)\b/i;
   const realWorldAction = /\b(?:on|in|with|using|sur|dans|avec)\s+(?:a\s+|un\s+|une\s+|the\s+)?(?:real|physical|réel|réelle)\s+(?:browser|device|phone|tablet|navigateur|téléphone|appareil)\b|\b(?:real browser|real device|téléphone réel|navigateur réel)\b/i;
-  if (humanAction.test(task) || realWorldAction.test(task)) {
+  const automatedBrowserTest = /\b(?:automated|playwright|cypress|selenium|headless)\b/i.test(task) &&
+    /\b(?:tests?|testing|assertions?|snapshots?|comparisons?|checks?)\b/i.test(task);
+  if (humanAction.test(task) || (realWorldAction.test(task) && !automatedBrowserTest)) {
     refuse('MANUAL', number, 'Manual or real-device acceptance is not executable during apply',
       'Move human acceptance to Manual acceptance without a checkbox');
   }
