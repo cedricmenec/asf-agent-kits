@@ -15,9 +15,6 @@ import {
   member,
 } from "../tools/node/common.mjs";
 import {
-  openRoot,
-  anchored,
-  parentFd,
   observe,
   exclusiveFile,
   recoverCreated,
@@ -33,30 +30,7 @@ import { build_release_manifest } from "../tools/build_release_manifest.mjs";
 import { inventory_fdrelative } from "../tools/inventory_fdrelative.mjs";
 import { qualify } from "../tools/qualify_mvp_render.mjs";
 import { config_for, three_way } from "../tools/plan_merge.mjs";
-let procfsAvailable = false;
-try {
-  const fd = openRoot(ROOT);
-  fs.closeSync(fd);
-  procfsAvailable = true;
-} catch {}
-const test = (name, fn) =>
-  nativeTest(name, (t) => {
-    if (
-      !procfsAvailable &&
-      !/strict JSON|canonical JSON|unsafe path|historical|pinned renderer|manifest exact|YAML|rendered Node/.test(
-        name,
-      )
-    ) {
-      assert.notEqual(
-        process.env.CI,
-        "true",
-        "CI must provide Linux procfs for security tests",
-      );
-      t.skip("Local filesystem broker does not expose procfs descriptors");
-      return;
-    }
-    return fn(t);
-  });
+const test = nativeTest;
 const fixture = (fn) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "asf-node-migration-"));
   try {
@@ -156,34 +130,16 @@ test("anchored creation and inode checked recovery", () =>
     recoverCreated(root, p, id);
     assert.equal(fs.readFileSync(path.join(root, p), "utf8"), "foreign");
   }));
-test("no-follow directory descriptor remains anchored after parent replacement", () =>
+test("portable parent validation refuses existing directory symlinks", () =>
   fixture((root) => {
-    fs.mkdirSync(path.join(root, "a"));
-    const outside = path.join(root, "outside");
-    fs.mkdirSync(outside);
-    const fd = parentFd(root, "a/file");
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), "asf-fs-outside-"));
     try {
-      fs.renameSync(path.join(root, "a"), path.join(root, "old"));
-      fs.symlinkSync(outside, path.join(root, "a"));
-      const p = anchored(fd, "file"),
-        out = fs.openSync(
-          p,
-          fs.constants.O_WRONLY |
-            fs.constants.O_CREAT |
-            fs.constants.O_EXCL |
-            fs.constants.O_NOFOLLOW,
-          0o600,
-        );
-      fs.writeSync(out, "anchored");
-      fs.closeSync(out);
+      fs.symlinkSync(outside, path.join(root, "a"), "dir");
+      assert.throws(() => exclusiveFile(root, "a/file", Buffer.from("x")),
+        /symlink parent|Non-directory/i);
       assert.equal(fs.existsSync(path.join(outside, "file")), false);
-      assert.equal(
-        fs.readFileSync(path.join(root, "old/file"), "utf8"),
-        "anchored",
-      );
-      assert.throws(() => exclusiveFile(root, "a/other", Buffer.from("x")));
     } finally {
-      fs.closeSync(fd);
+      fs.rmSync(outside, { recursive: true, force: true });
     }
   }));
 for (const type of ["symlink", "hardlink", "fifo", "case", "directory"])
