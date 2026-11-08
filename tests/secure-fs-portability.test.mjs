@@ -68,11 +68,13 @@ test("#119: an unsupported platform must not silently use pathname writes", (t) 
   });
 });
 
-test("#119: macOS fdesc-backed directory operations are verified before use", (t) => {
-  if (process.platform !== "darwin") return t.skip("macOS-only capability");
+test("#119: macOS without traversable fd mount fails closed before writes", (t) => {
+  if (process.platform !== "darwin") return t.skip("macOS-only qualification");
   fixture((root) => {
-    const id = exclusiveFile(root, "nested/checked.txt", Buffer.from("payload"));
-    assert.ok(id);
-    assert.equal(observe(root, "nested/checked.txt").toString(), "payload");
+    // macos-15 provides /dev/fd but it is not traversable with Node O_DIRECTORY;
+    // do not infer that the mere presence of /dev/fd makes openat safe.
+    assert.throws(() => exclusiveFile(root, "nested/checked.txt", Buffer.from("no")),
+      /descriptor operations unavailable|descriptor namespace unavailable/i);
+    assert.deepEqual(fs.readdirSync(root), []);
   });
 });
