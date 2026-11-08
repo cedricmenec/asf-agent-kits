@@ -83,6 +83,14 @@ Plan creates `proposal.md`, `design.md`, `tasks.md` and specs/\<capability>/`spe
 
 Task checkboxes must describe executable implementation work. Put manual acceptance in separate review notes, not in implementation checkboxes.
 
+### Checklist contract and gate
+
+During `plan`, `apply` and `finalize`, the trusted `checklist.mjs` gate rejects tasks that require manual/real-device acceptance, post-sync/PR/CI approval or mixed visual acceptance. Passing `openspec validate --strict` alone does not prove that every checkbox is executable during `apply`.
+
+For example, `- [ ] Implement visually hidden labels with automated DOM assertions` is an executable checkbox. Automated Playwright tests in a real browser are also executable when their assertions are deterministic. A checkbox that appends `Verify: ... WHEN a user observes ... THEN visually distinguishable` is mixed and is rejected. Keep the implementation/tests checkbox, then put the human observation in `## Manual acceptance` as prose without `[ ]`. Put sync/archive, independent CI and merge review in `## Post-sync review`, also without checkboxes. Observable scenarios can remain in OpenSpec delta specs.
+
+Refusals emit a stable `ASF-OPSX-*` rule code and a `tasks.md` line number with a suggested fix, without echoing model-authored task text. The gate does not automatically rewrite a plan or trigger another model call. In 1.4.0, an invalid plan in `auto` can still stop execution before publication; durable intermediate checkpoints are tracked separately in [issue #127](https://github.com/cedricmenec/asf-agent-kits/issues/127).
+
 ## Continue
 
 [Install](install.md) · [Update and rollback](update.md) · [Documentation index](../../README.md)

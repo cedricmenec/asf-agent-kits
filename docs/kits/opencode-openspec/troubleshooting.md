@@ -11,7 +11,7 @@ Read the failed step and inspect the branch and PR before trying again. A failed
 | Missing setup | APP\_ID and both secret names | Complete setup in GitHub Settings |
 | Existing agent branch | Previous plan or partial work | Inspect it; use apply/finalize if valid; do not delete useful work blindly |
 | Existing change directory | Previous plan output | Review state; plan/auto cannot overwrite it |
-| Checklist refused | Manual acceptance or post-sync checkboxes | Keep only executable implementation items in `tasks.md`; track human review separately |
+| Checklist refused (ASF-OPSX-SECTION/MANUAL/MIXED/DEFERRED) | Check the reported `tasks.md` line: a checkbox may include human/visual verification, or PR/CI/sync/archive review | Keep code and deterministic tests as checkboxes; move manual observation to `## Manual acceptance` and PR/CI/sync review to `## Post-sync review`, both without checkboxes |
 | Forbidden path | Generated changes to protected or unsupported paths | Review the diff and narrow the task; do not weaken guards to force publication |
 | Branch moved | Default or agent branch changed after prepare | Inspect both refs and restart deliberately from the correct state |
 | Project checks failed | Tests and product environment | Read the failure; fix the cause before resuming |
@@ -30,6 +30,8 @@ A model timeout or network error may leave provider billing uncertain. Check the
 ## Repair carefully
 
 Keep useful branches and logs until you understand the failure. Do not force-push protected branches, disable CI or bypass scope checks to recover. The kit has no universal resume button.
+
+The checklist error reports a rule code, line number and safe correction instructions, not the original task content. The current `auto` workflow does **not** persist a partially rejected plan: if publication did not occur, inspect the failed run before considering any new paid dispatch. The future pre-apply checkpoint and budget-bound repair policy are specified in [issue #127](https://github.com/cedricmenec/asf-agent-kits/issues/127), not enabled by this checklist fix.
 
 ## Continue
 
