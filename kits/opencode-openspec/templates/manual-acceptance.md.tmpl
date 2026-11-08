@@ -13,9 +13,16 @@ This is a deployed instruction file, not evidence of completion or consent.
   applied rules from checked-in configuration.
 - The owner-only `workflow_dispatch` is the explicit run-level action. Review
   the selected phase and model before dispatch: default `auto` can make three
-  paid OpenCode calls (plan, apply, OPSX sync), with no USD cap. `plan`, `apply`
-  and `finalize` each select their own single phase. The former
-  `paid_approval` text input is not used.
+  paid OpenCode phase invocations (plan, apply, OPSX sync) with no dollar cap.
+  A scoped intermediate plan is published and checked on its remote SHA before
+  any apply work. `plan`, `apply` and `finalize` can run separately.
+- Optional `repair_calls=1` and positive `budget_usd` authorize at most one extra
+  paid plan repair within this dispatch. Configure a dedicated, non-resetting
+  capped OpenRouter key whose remaining allowance is no greater than the
+  selected budget; otherwise preflight refuses the run. Provider accounting is
+  not a perfect per-request transactional ceiling. Default is 0/0 and no repair.
+- A failed strict plan gate blocks apply. Inspect the checkpoint draft PR and
+  GitHub summary before manually resuming. A draft checkpoint is not approval.
 - Do not re-run a failed paid job. Inspect the remote branch, PR and provider
   usage first; a later phase requires a new authorization.
 - Keep every resulting PR in draft until independent CI at its exact SHA and

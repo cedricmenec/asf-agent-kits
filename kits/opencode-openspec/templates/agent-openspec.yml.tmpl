@@ -1,8 +1,8 @@
-# Generated from ASF AgentKit. Do not activate before manual GitHub setup/review.
-# Manual, first-attempt, owner-only. The selected phase explicitly determines
-# the potential paid work; auto runs three sequential OpenCode calls.
-# OpenCode never receives GitHub App publication credentials.
-name: AgentKit OpenSpec (manual, staged or auto)
+# Generated from ASF AgentKit. Manual owner dispatch, first attempt only.
+# Plan is published as a scoped draft checkpoint, then verified at its remote SHA.
+# No apply before the strict non-LLM gate. Extra repair is opt-in and bounded.
+# Model steps never receive the App publication token.
+name: AgentKit OpenSpec (checkpoint and pre-apply gate)
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       phase:
-        description: 'auto: 3 paid OpenCode calls (plan, apply, OPSX sync); no USD cap'
+        description: 'auto: plan checkpoint, verification, apply, finalize; paid calls'
         required: true
         type: choice
         default: auto
@@ -26,6 +26,17 @@ on:
           - openrouter/deepseek/deepseek-v4.1-flash
           - openrouter/deepseek/deepseek-v4.1-flash-1017
           - openrouter/z-ai/glm-5.3-flash
+      repair_calls:
+        description: 'Maximum additional paid plan repairs (0 or 1)'
+        required: true
+        type: choice
+        default: '0'
+        options: ['0', '1']
+      budget_usd:
+        description: 'Repair envelope in USD (0 if disabled). Requires capped OpenRouter key.'
+        required: true
+        type: string
+        default: '0'
 
 permissions:
   contents: read
@@ -49,34 +60,58 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '26.13.0'
-      - name: Verify owner request and source prerequisites before a paid job
+      - name: Verify owner, preconditions and bounded optional repair before any paid job
         id: request
         env:
           RAW_TASK_ID: ${{ inputs.task_id }}
           PHASE: ${{ inputs.phase }}
           OPENCODE_MODEL: ${{ inputs.model }}
+          REPAIR_CALLS: ${{ inputs.repair_calls }}
+          BUDGET_USD: ${{ inputs.budget_usd }}
           APP_ID_PRESENT: ${{ vars.@@APPIDVAR@@ }}
           APP_PRIVATE_KEY_PRESENT: ${{ secrets.@@APPPRIVATEKEYSECRET@@ }}
           PROVIDER_KEY_PRESENT: ${{ secrets.@@OPENROUTERSECRET@@ }}
+          OPENROUTER_API_KEY: ${{ secrets.@@OPENROUTERSECRET@@ }}
           ASF_GIT_READ_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          # Only this trusted step receives the read-only GitHub Actions token.
-          # The credential is ephemeral: never write it into .git/config.
-          test -n "$ASF_GIT_READ_TOKEN" || { echo "::error::GitHub read token unavailable"; exit 1; }
+          test -n "$ASF_GIT_READ_TOKEN" || { echo '::error title=ASF-PREFLIGHT::GitHub read token absent'; exit 1; }
           export GIT_CONFIG_COUNT=1
           export GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
           GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$ASF_GIT_READ_TOKEN" | base64 -w0)"
           export GIT_CONFIG_VALUE_0
           test -n "$APP_ID_PRESENT" && test -n "$APP_PRIVATE_KEY_PRESENT" && test -n "$PROVIDER_KEY_PRESENT" || {
-            echo "::error::Required App/provider setup missing; inspect manual-acceptance.md"; exit 1
+            echo '::error title=ASF-PREFLIGHT::App/provider setup missing; see manual-acceptance.md'; exit 1;
           }
-          test -f .asf/agentkit/runtime/request.mjs
+          test -s package-lock.json && test -s openspec/config.yaml || {
+            echo '::error title=ASF-PREFLIGHT::Target OpenSpec config or package lock absent'; exit 1;
+          }
           node .asf/agentkit/runtime/request.mjs
+          node .asf/agentkit/runtime/budget.mjs
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        id: app-token
+        with:
+          app-id: ${{ vars.@@APPIDVAR@@ }}
+          private-key: ${{ secrets.@@APPPRIVATEKEYSECRET@@ }}
+          permission-contents: write
+          permission-pull-requests: write
+      - name: Probe GitHub App repository access before model execution
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          test "$(gh api "repos/$GITHUB_REPOSITORY" --jq .full_name)" = "$GITHUB_REPOSITORY" || {
+            echo '::error title=ASF-APP-ACCESS::GitHub App cannot access repository; check installation and contents/PR write permissions'; exit 1;
+          }
 
-  execute:
-    needs: prepare
+  execute_plan:
+    needs: [prepare]
+    if: inputs.phase == 'plan' || inputs.phase == 'auto'
+    outputs:
+      expectedSha: ${{ steps.exact.outputs.expectedSha }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     concurrency:
@@ -85,13 +120,13 @@ jobs:
     permissions:
       contents: read
     env:
-      PHASE: ${{ inputs.phase }}
+      PHASE: 'plan'
       TASK_ID: ${{ needs.prepare.outputs.taskId }}
       CHANGE_ID: ${{ needs.prepare.outputs.change }}
       AGENT_BRANCH: ${{ needs.prepare.outputs.branch }}
-      OBSERVED_TIP: ${{ needs.prepare.outputs.observedTip }}
+      EXPECTED_TIP: ${{ needs.prepare.outputs.observedTip }}
+      DEFAULT_BRANCH: '@@DEFAULTBRANCH@@'
       OPENCODE_MODEL: ${{ inputs.model }}
-      OPENROUTER_API_KEY: ${{ secrets.@@OPENROUTERSECRET@@ }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -100,46 +135,38 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '26.13.0'
-      - name: Load trusted policies and select exact observed branch
+      - name: Check trusted policies and exact remote checkpoint
+        id: exact
         env:
           ASF_GIT_READ_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          # Only this trusted step receives the read-only GitHub Actions token.
-          # The credential is ephemeral: never write it into .git/config.
-          test -n "$ASF_GIT_READ_TOKEN" || { echo "::error::GitHub read token unavailable"; exit 1; }
-          export GIT_CONFIG_COUNT=1
-          export GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
-          GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$ASF_GIT_READ_TOKEN" | base64 -w0)"
-          export GIT_CONFIG_VALUE_0
-          test -n "$OPENROUTER_API_KEY" || { echo "::error::Provider key unavailable"; exit 1; }
-          for file in scope.mjs model-policy.mjs checklist.mjs phase.sh; do
-            git show "$GITHUB_SHA:.asf/agentkit/runtime/$file" > "$RUNNER_TEMP/$file"
-            test -s "$RUNNER_TEMP/$file"
-          done
-          if [[ "$OBSERVED_TIP" == absent ]]; then
-            git switch -c "$AGENT_BRANCH"
-          else
-            git fetch --no-tags origin "refs/heads/$AGENT_BRANCH"
-            test "$(git rev-parse FETCH_HEAD)" = "$OBSERVED_TIP" || {
-              echo "::error::Agent branch moved after preflight"; exit 1
-            }
-            git switch -c "$AGENT_BRANCH" "$OBSERVED_TIP"
-          fi
-      - name: Install fixed OpenSpec and OpenCode binaries
+          git show "$GITHUB_SHA:.asf/agentkit/runtime/stage.sh" > "$RUNNER_TEMP/stage.sh"
+          test -s "$RUNNER_TEMP/stage.sh"
+          bash "$RUNNER_TEMP/stage.sh" execute
+      - name: Install fixed OpenCode and OpenSpec binaries
         shell: bash
         run: |
           set -euo pipefail
           npm install --global @fission-ai/openspec@1.14.1 opencode-ai@1.19.0
-          openspec --version
           test "$(opencode --version)" = 1.19.0
+          openspec --version
       - name: Configure trusted model policy
         run: node "$RUNNER_TEMP/model-policy.mjs"
-      - name: Execute the selected OpenSpec phase or sequence
+      - name: Execute scoped plan phase
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.@@OPENROUTERSECRET@@ }}
+          ASF_PLAN_CHECKPOINT_ONLY: "1"
+          REPAIR_CALLS: ${{ inputs.repair_calls }}
+          BUDGET_USD: ${{ inputs.budget_usd }}
         shell: bash
-        run: bash "$RUNNER_TEMP/phase.sh"
-      - name: Verify model changes and create untrusted patch artifact
+        run: |
+          set -euo pipefail
+          bash "$RUNNER_TEMP/phase.sh"
+      - name: Validate changes, scan plan for credentials, create scoped patch
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.@@OPENROUTERSECRET@@ }}
         shell: bash
         run: |
           set -euo pipefail
@@ -150,64 +177,48 @@ jobs:
           test -s "$RUNNER_TEMP/agentkit.patch"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: agentkit-reviewed-scope-patch
+          name: patch-plan
           path: ${{ runner.temp }}/agentkit.patch
           if-no-files-found: error
           retention-days: 1
 
-  publish:
-    needs: [prepare, execute]
+  publish_plan:
+    needs: [prepare, execute_plan]
+    if: needs.execute_plan.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
+    outputs:
+      headSha: ${{ steps.checkpoint.outputs.headSha }}
     env:
-      PHASE: ${{ inputs.phase }}
+      PHASE: 'plan'
       TASK_ID: ${{ needs.prepare.outputs.taskId }}
       CHANGE_ID: ${{ needs.prepare.outputs.change }}
       AGENT_BRANCH: ${{ needs.prepare.outputs.branch }}
-      OBSERVED_TIP: ${{ needs.prepare.outputs.observedTip }}
+      EXPECTED_TIP: ${{ needs.prepare.outputs.observedTip }}
       DEFAULT_BRANCH: '@@DEFAULTBRANCH@@'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '26.13.0'
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: agentkit-reviewed-scope-patch
+          name: patch-plan
           path: ${{ runner.temp }}/agentkit-patch
-      - name: Prepare trusted guard and check exact remote refs
+      - name: Check trusted policies and exact remote checkpoint
         env:
           ASF_GIT_READ_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          # Only this trusted step receives the read-only GitHub Actions token.
-          # The credential is ephemeral: never write it into .git/config.
-          test -n "$ASF_GIT_READ_TOKEN" || { echo "::error::GitHub read token unavailable"; exit 1; }
-          export GIT_CONFIG_COUNT=1
-          export GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
-          GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$ASF_GIT_READ_TOKEN" | base64 -w0)"
-          export GIT_CONFIG_VALUE_0
-          git show "$GITHUB_SHA:.asf/agentkit/runtime/scope.mjs" > "$RUNNER_TEMP/scope.mjs"
-          git fetch --no-tags origin "refs/heads/$DEFAULT_BRANCH"
-          test "$(git rev-parse FETCH_HEAD)" = "$GITHUB_SHA" || {
-            echo "::error::Default branch moved since owner dispatch"; exit 1
-          }
-          remote_tip="$(git ls-remote --heads origin "refs/heads/$AGENT_BRANCH" | cut -f1)"
-          if [[ "$OBSERVED_TIP" == absent ]]; then
-            test -z "$remote_tip" || { echo "::error::Branch appeared since preflight"; exit 1; }
-            git switch -c "$AGENT_BRANCH"
-          else
-            test "$remote_tip" = "$OBSERVED_TIP" || { echo "::error::Branch moved since preflight"; exit 1; }
-            git fetch --no-tags origin "refs/heads/$AGENT_BRANCH"
-            test "$(git rev-parse FETCH_HEAD)" = "$OBSERVED_TIP"
-            git switch -c "$AGENT_BRANCH" "$OBSERVED_TIP"
-          fi
-          git apply --check --index "$RUNNER_TEMP/agentkit-patch/agentkit.patch"
-          git apply --index "$RUNNER_TEMP/agentkit-patch/agentkit.patch"
-          node "$RUNNER_TEMP/scope.mjs" staged "$PHASE" "$CHANGE_ID"
+          git show "$GITHUB_SHA:.asf/agentkit/runtime/stage.sh" > "$RUNNER_TEMP/stage.sh"
+          test -s "$RUNNER_TEMP/stage.sh"
+          bash "$RUNNER_TEMP/stage.sh" publish
       - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
         id: app-token
         with:
@@ -215,22 +226,495 @@ jobs:
           private-key: ${{ secrets.@@APPPRIVATEKEYSECRET@@ }}
           permission-contents: write
           permission-pull-requests: write
-      - name: Publish ordinary branch and draft PR only
+      - name: Publish ordinary branch and draft PR, never merge
+        id: checkpoint
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         shell: bash
+        run: bash "$RUNNER_TEMP/publish.sh"
+
+  verify_plan:
+    needs: [prepare, publish_plan]
+    if: always() && needs.prepare.result == 'success' && (inputs.phase == 'apply' || needs.publish_plan.result == 'success') && (inputs.phase == 'apply' || inputs.phase == 'plan' || inputs.phase == 'auto')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      verifiedSha: ${{ steps.remote.outputs.verifiedSha }}
+      quality: ${{ steps.verdict.outputs.quality }}
+    env:
+      PHASE: 'verify-plan'
+      TASK_ID: ${{ needs.prepare.outputs.taskId }}
+      CHANGE_ID: ${{ needs.prepare.outputs.change }}
+      AGENT_BRANCH: ${{ needs.prepare.outputs.branch }}
+      EXPECTED_TIP: ${{ inputs.phase == 'apply' && needs.prepare.outputs.observedTip || needs.publish_plan.outputs.headSha }}
+      DEFAULT_BRANCH: '@@DEFAULTBRANCH@@'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '26.13.0'
+      - name: Select exact published plan checkpoint
+        id: remote
+        env:
+          ASF_GIT_READ_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
           set -euo pipefail
-          test -n "$GH_TOKEN"
-          git config user.name "asf-agentkit[bot]"
-          git config user.email "asf-agentkit[bot]@users.noreply.github.com"
-          git commit -m "agent($TASK_ID): OpenSpec $PHASE"
-          git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" push origin "HEAD:refs/heads/$AGENT_BRANCH"
-          existing="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$AGENT_BRANCH" --state open --json number --jq '.[0].number // empty')"
-          if [[ -z "$existing" ]]; then
-            gh pr create --repo "$GITHUB_REPOSITORY" --draft --base "$DEFAULT_BRANCH" --head "$AGENT_BRANCH" \
-              --title "OpenSpec: $TASK_ID" \
-              --body "Phase $PHASE. Independent CI and manual acceptance required. No auto-merge or operational approval is implied."
+          git show "$GITHUB_SHA:.asf/agentkit/runtime/stage.sh" > "$RUNNER_TEMP/stage.sh"
+          test -s "$RUNNER_TEMP/stage.sh"
+          bash "$RUNNER_TEMP/stage.sh" verify
+      - name: Install fixed OpenSpec binary, no model
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global @fission-ai/openspec@1.14.1
+          openspec --version
+      - name: Run strict plan quality gate (no model call)
+        id: quality
+        continue-on-error: true
+        shell: bash
+        run: bash "$RUNNER_TEMP/phase.sh"
+      - name: Explain quality decision
+        id: verdict
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ steps.quality.outcome }}" == success ]]; then
+            echo 'quality=pass' >> "$GITHUB_OUTPUT"
+            echo '### ASF-GATE-PASS: remote OpenSpec plan validated' >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Existing draft/review PR #$existing updated; no merge requested."
+            echo 'quality=fail' >> "$GITHUB_OUTPUT"
+            echo '### ASF-GATE-FAILED: apply blocked' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Inspect OpenSpec validation and target tests above. Fix the plan on the branch, then dispatch apply; optional bounded repair is available for plan/auto.' >> "$GITHUB_STEP_SUMMARY"
           fi
+      - name: Stop when a failed plan cannot use bounded repair
+        if: steps.quality.outcome == 'failure' && (inputs.repair_calls != '1' || inputs.phase == 'apply')
+        shell: bash
+        run: |
+          echo '::error title=ASF-PREAPPLY-GATE::OpenSpec checkpoint failed strict validation. Apply was not started. See the verification log and the draft branch.'
+          exit 1
+
+  execute_repair:
+    needs: [prepare, publish_plan, verify_plan]
+    if: always() && needs.prepare.result == 'success' && needs.publish_plan.result == 'success' && needs.verify_plan.result == 'success' && needs.verify_plan.outputs.quality == 'fail' && inputs.repair_calls == '1' && (inputs.phase == 'auto' || inputs.phase == 'plan')
+    outputs:
+      expectedSha: ${{ steps.exact.outputs.expectedSha }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    concurrency:
+      group: @@MUTEXGROUP@@
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    env:
+      PHASE: 'repair-plan'
+      TASK_ID: ${{ needs.prepare.outputs.taskId }}
+      CHANGE_ID: ${{ needs.prepare.outputs.change }}
+      AGENT_BRANCH: ${{ needs.prepare.outputs.branch }}
+      EXPECTED_TIP: ${{ needs.publish_plan.outputs.headSha }}
+      DEFAULT_BRANCH: '@@DEFAULTBRANCH@@'
+      OPENCODE_MODEL: ${{ inputs.model }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '26.13.0'
+      - name: Check trusted policies and exact remote checkpoint
+        id: exact
+        env:
+          ASF_GIT_READ_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show "$GITHUB_SHA:.asf/agentkit/runtime/stage.sh" > "$RUNNER_TEMP/stage.sh"
+          test -s "$RUNNER_TEMP/stage.sh"
+          bash "$RUNNER_TEMP/stage.sh" execute
+      - name: Install fixed OpenCode and OpenSpec binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global @fission-ai/openspec@1.14.1 opencode-ai@1.19.0
+          test "$(opencode --version)" = 1.19.0
+          openspec --version
+      - name: Configure trusted model policy
+        run: node "$RUNNER_TEMP/model-policy.mjs"
+      - name: Repair existing plan once under explicit budget
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.@@OPENROUTERSECRET@@ }}
+          REPAIR_CALLS: ${{ inputs.repair_calls }}
+          BUDGET_USD: ${{ inputs.budget_usd }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node "$RUNNER_TEMP/budget.mjs"
+          bash "$RUNNER_TEMP/phase.sh"
+      - name: Validate changes, scan plan for credentials, create scoped patch
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.@@OPENROUTERSECRET@@ }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node "$RUNNER_TEMP/scope.mjs" all "$PHASE" "$CHANGE_ID"
+          git add -A
+          node "$RUNNER_TEMP/scope.mjs" staged "$PHASE" "$CHANGE_ID"
+          git diff --cached --binary > "$RUNNER_TEMP/agentkit.patch"
+          test -s "$RUNNER_TEMP/agentkit.patch"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: patch-repair-plan
+          path: ${{ runner.temp }}/agentkit.patch
+          if-no-files-found: error
+          retention-days: 1
+
+  publish_repair:
+    needs: [prepare, publish_plan, execute_repair]
+    if: needs.execute_repair.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      headSha: ${{ steps.checkpoint.outputs.headSha }}
+    env:
+      PHASE: 'repair-plan'
+      TASK_ID: ${{ needs.prepare.outputs.taskId }}
+      CHANGE_ID: ${{ needs.prepare.outputs.change }}
+      AGENT_BRANCH: ${{ needs.prepare.outputs.branch }}
+      EXPECTED_TIP: ${{ needs.publish_plan.outputs.headSha }}
+      DEFAULT_BRANCH: '@@DEFAULTBRANCH@@'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '26.13.0'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: patch-repair-plan
+          path: ${{ runner.temp }}/agentkit-patch
+      - name: Check trusted policies and exact remote checkpoint
+        env:
+          ASF_GIT_READ_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show "$GITHUB_SHA:.asf/agentkit/runtime/stage.sh" > "$RUNNER_TEMP/stage.sh"
+          test -s "$RUNNER_TEMP/stage.sh"
+          bash "$RUNNER_TEMP/stage.sh" publish
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        id: app-token
+        with:
+          app-id: ${{ vars.@@APPIDVAR@@ }}
+          private-key: ${{ secrets.@@APPPRIVATEKEYSECRET@@ }}
+          permission-contents: write
+          permission-pull-requests: write
+      - name: Publish ordinary branch and draft PR, never merge
+        id: checkpoint
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        shell: bash
+        run: bash "$RUNNER_TEMP/publish.sh"
+
+  verify_repair:
+    needs: [prepare, publish_repair]
+    if: always() && needs.prepare.result == 'success' && needs.publish_repair.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      verifiedSha: ${{ steps.remote.outputs.verifiedSha }}
+    env:
+      PHASE: 'verify-plan'
+      TASK_ID: ${{ needs.prepare.outputs.taskId }}
+      CHANGE_ID: ${{ needs.prepare.outputs.change }}
+      AGENT_BRANCH: ${{ needs.prepare.outputs.branch }}
+      EXPECTED_TIP: ${{ needs.publish_repair.outputs.headSha }}
+      DEFAULT_BRANCH: '@@DEFAULTBRANCH@@'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '26.13.0'
+      - name: Select exact published plan checkpoint
+        id: remote
+        env:
+          ASF_GIT_READ_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show "$GITHUB_SHA:.asf/agentkit/runtime/stage.sh" > "$RUNNER_TEMP/stage.sh"
+          test -s "$RUNNER_TEMP/stage.sh"
+          bash "$RUNNER_TEMP/stage.sh" verify
+      - name: Install fixed OpenSpec binary, no model
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global @fission-ai/openspec@1.14.1
+          openspec --version
+      - name: Verify repaired checkpoint with strict plan gate
+        shell: bash
+        run: bash "$RUNNER_TEMP/phase.sh"
+
+  execute_apply:
+    needs: [prepare, verify_plan, verify_repair]
+    if: always() && needs.prepare.result == 'success' && (inputs.phase == 'auto' || inputs.phase == 'apply') && ((needs.verify_plan.result == 'success' && needs.verify_plan.outputs.quality == 'pass') || needs.verify_repair.result == 'success')
+    outputs:
+      expectedSha: ${{ steps.exact.outputs.expectedSha }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    concurrency:
+      group: @@MUTEXGROUP@@
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    env:
+      PHASE: 'apply'
+      TASK_ID: ${{ needs.prepare.outputs.taskId }}
+      CHANGE_ID: ${{ needs.prepare.outputs.change }}
+      AGENT_BRANCH: ${{ needs.prepare.outputs.branch }}
+      EXPECTED_TIP: ${{ needs.verify_repair.result == 'success' && needs.verify_repair.outputs.verifiedSha || needs.verify_plan.outputs.verifiedSha }}
+      DEFAULT_BRANCH: '@@DEFAULTBRANCH@@'
+      OPENCODE_MODEL: ${{ inputs.model }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '26.13.0'
+      - name: Check trusted policies and exact remote checkpoint
+        id: exact
+        env:
+          ASF_GIT_READ_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show "$GITHUB_SHA:.asf/agentkit/runtime/stage.sh" > "$RUNNER_TEMP/stage.sh"
+          test -s "$RUNNER_TEMP/stage.sh"
+          bash "$RUNNER_TEMP/stage.sh" execute
+      - name: Install fixed OpenCode and OpenSpec binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global @fission-ai/openspec@1.14.1 opencode-ai@1.19.0
+          test "$(opencode --version)" = 1.19.0
+          openspec --version
+      - name: Configure trusted model policy
+        run: node "$RUNNER_TEMP/model-policy.mjs"
+      - name: Execute scoped apply phase
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.@@OPENROUTERSECRET@@ }}
+          REPAIR_CALLS: ${{ inputs.repair_calls }}
+          BUDGET_USD: ${{ inputs.budget_usd }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash "$RUNNER_TEMP/phase.sh"
+      - name: Validate changes, scan plan for credentials, create scoped patch
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.@@OPENROUTERSECRET@@ }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node "$RUNNER_TEMP/scope.mjs" all "$PHASE" "$CHANGE_ID"
+          git add -A
+          node "$RUNNER_TEMP/scope.mjs" staged "$PHASE" "$CHANGE_ID"
+          git diff --cached --binary > "$RUNNER_TEMP/agentkit.patch"
+          test -s "$RUNNER_TEMP/agentkit.patch"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: patch-apply
+          path: ${{ runner.temp }}/agentkit.patch
+          if-no-files-found: error
+          retention-days: 1
+
+  publish_apply:
+    needs: [prepare, execute_apply]
+    if: needs.execute_apply.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      headSha: ${{ steps.checkpoint.outputs.headSha }}
+    env:
+      PHASE: 'apply'
+      TASK_ID: ${{ needs.prepare.outputs.taskId }}
+      CHANGE_ID: ${{ needs.prepare.outputs.change }}
+      AGENT_BRANCH: ${{ needs.prepare.outputs.branch }}
+      EXPECTED_TIP: ${{ needs.execute_apply.outputs.expectedSha }}
+      DEFAULT_BRANCH: '@@DEFAULTBRANCH@@'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '26.13.0'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: patch-apply
+          path: ${{ runner.temp }}/agentkit-patch
+      - name: Check trusted policies and exact remote checkpoint
+        env:
+          ASF_GIT_READ_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show "$GITHUB_SHA:.asf/agentkit/runtime/stage.sh" > "$RUNNER_TEMP/stage.sh"
+          test -s "$RUNNER_TEMP/stage.sh"
+          bash "$RUNNER_TEMP/stage.sh" publish
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        id: app-token
+        with:
+          app-id: ${{ vars.@@APPIDVAR@@ }}
+          private-key: ${{ secrets.@@APPPRIVATEKEYSECRET@@ }}
+          permission-contents: write
+          permission-pull-requests: write
+      - name: Publish ordinary branch and draft PR, never merge
+        id: checkpoint
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        shell: bash
+        run: bash "$RUNNER_TEMP/publish.sh"
+
+  execute_finalize:
+    needs: [prepare, publish_apply]
+    if: always() && needs.prepare.result == 'success' && (inputs.phase == 'finalize' || (inputs.phase == 'auto' && needs.publish_apply.result == 'success'))
+    outputs:
+      expectedSha: ${{ steps.exact.outputs.expectedSha }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    concurrency:
+      group: @@MUTEXGROUP@@
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    env:
+      PHASE: 'finalize'
+      TASK_ID: ${{ needs.prepare.outputs.taskId }}
+      CHANGE_ID: ${{ needs.prepare.outputs.change }}
+      AGENT_BRANCH: ${{ needs.prepare.outputs.branch }}
+      EXPECTED_TIP: ${{ inputs.phase == 'finalize' && needs.prepare.outputs.observedTip || needs.publish_apply.outputs.headSha }}
+      DEFAULT_BRANCH: '@@DEFAULTBRANCH@@'
+      OPENCODE_MODEL: ${{ inputs.model }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '26.13.0'
+      - name: Check trusted policies and exact remote checkpoint
+        id: exact
+        env:
+          ASF_GIT_READ_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show "$GITHUB_SHA:.asf/agentkit/runtime/stage.sh" > "$RUNNER_TEMP/stage.sh"
+          test -s "$RUNNER_TEMP/stage.sh"
+          bash "$RUNNER_TEMP/stage.sh" execute
+      - name: Install fixed OpenCode and OpenSpec binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global @fission-ai/openspec@1.14.1 opencode-ai@1.19.0
+          test "$(opencode --version)" = 1.19.0
+          openspec --version
+      - name: Configure trusted model policy
+        run: node "$RUNNER_TEMP/model-policy.mjs"
+      - name: Execute scoped finalize phase
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.@@OPENROUTERSECRET@@ }}
+          REPAIR_CALLS: ${{ inputs.repair_calls }}
+          BUDGET_USD: ${{ inputs.budget_usd }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash "$RUNNER_TEMP/phase.sh"
+      - name: Validate changes, scan plan for credentials, create scoped patch
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.@@OPENROUTERSECRET@@ }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node "$RUNNER_TEMP/scope.mjs" all "$PHASE" "$CHANGE_ID"
+          git add -A
+          node "$RUNNER_TEMP/scope.mjs" staged "$PHASE" "$CHANGE_ID"
+          git diff --cached --binary > "$RUNNER_TEMP/agentkit.patch"
+          test -s "$RUNNER_TEMP/agentkit.patch"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: patch-finalize
+          path: ${{ runner.temp }}/agentkit.patch
+          if-no-files-found: error
+          retention-days: 1
+
+  publish_finalize:
+    needs: [prepare, execute_finalize]
+    if: needs.execute_finalize.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      headSha: ${{ steps.checkpoint.outputs.headSha }}
+    env:
+      PHASE: 'finalize'
+      TASK_ID: ${{ needs.prepare.outputs.taskId }}
+      CHANGE_ID: ${{ needs.prepare.outputs.change }}
+      AGENT_BRANCH: ${{ needs.prepare.outputs.branch }}
+      EXPECTED_TIP: ${{ needs.execute_finalize.outputs.expectedSha }}
+      DEFAULT_BRANCH: '@@DEFAULTBRANCH@@'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '26.13.0'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: patch-finalize
+          path: ${{ runner.temp }}/agentkit-patch
+      - name: Check trusted policies and exact remote checkpoint
+        env:
+          ASF_GIT_READ_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show "$GITHUB_SHA:.asf/agentkit/runtime/stage.sh" > "$RUNNER_TEMP/stage.sh"
+          test -s "$RUNNER_TEMP/stage.sh"
+          bash "$RUNNER_TEMP/stage.sh" publish
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        id: app-token
+        with:
+          app-id: ${{ vars.@@APPIDVAR@@ }}
+          private-key: ${{ secrets.@@APPPRIVATEKEYSECRET@@ }}
+          permission-contents: write
+          permission-pull-requests: write
+      - name: Publish ordinary branch and draft PR, never merge
+        id: checkpoint
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        shell: bash
+        run: bash "$RUNNER_TEMP/publish.sh"

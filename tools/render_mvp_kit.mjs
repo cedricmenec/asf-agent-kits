@@ -21,8 +21,11 @@ export const FILES = [
     "request.mjs",
     "scope.mjs",
     "model-policy.mjs",
+    "budget.mjs",
     "checklist.mjs",
     "phase.sh",
+    "publish.sh",
+    "stage.sh",
   ].map((v) => [v + ".tmpl", ".asf/agentkit/runtime/" + v]),
   ...[
     "manual-acceptance.md",

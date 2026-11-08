@@ -34,6 +34,10 @@ export async function qualify(
     for (const p of fs.readdirSync(runtime).filter((p) => p.endsWith(".mjs")))
       execFileSync(process.execPath, ["--check", path.join(runtime, p)]);
     execFileSync("bash", ["-n", path.join(runtime, "phase.sh")]);
+    if (kit === "opencode-openspec") {
+      for (const name of ["publish.sh", "stage.sh"])
+        execFileSync("bash", ["-n", path.join(runtime, name)]);
+    }
     if (actionlint)
       execFileSync(actionlint, [
         "-color",

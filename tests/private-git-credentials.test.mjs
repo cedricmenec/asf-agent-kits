@@ -9,12 +9,15 @@ const marker = "ASF_GIT_READ_TOKEN";
 const readSteps = [
   "Verify owner request and source prerequisites before a paid job",
   "Prepare trusted guard and check exact remote refs",
+  "Verify owner, preconditions and bounded optional repair before any paid job",
+  "Check trusted policies and exact remote checkpoint",
+  "Select exact published plan checkpoint",
 ];
 const runScript = (step) => step?.run ?? "";
 
-for (const [kit, target, count] of [
-  ["opencode-openspec", ".github/workflows/asf-agentkit-openspec.yml", 3],
-  ["opencode-direct", ".github/workflows/asf-agentkit-direct.yml", 2],
+for (const [kit, target] of [
+  ["opencode-openspec", ".github/workflows/asf-agentkit-openspec.yml"],
+  ["opencode-direct", ".github/workflows/asf-agentkit-direct.yml"],
 ]) {
   test(`#118 ${kit}: authenticated, ephemeral Git reads with no model credentials`, () => {
     const rendered = render_mvp(ROOT, cfg, kit);
@@ -34,35 +37,47 @@ for (const [kit, target, count] of [
     const scoped = Object.values(workflow.jobs)
       .flatMap((job) => job.steps)
       .filter((step) => Object.hasOwn(step.env ?? {}, marker));
-    assert.equal(scoped.length, count);
+    assert.equal(scoped.length, kit === 'opencode-direct' ? 2 : 11);
     for (const step of scoped) {
       assert.ok(readSteps.includes(step.name) ||
         (kit === "opencode-openspec" &&
           step.name === "Load trusted policies and select exact observed branch"),
         "Read token must only be exposed to trusted preflight steps");
       assert.equal(step.env[marker], "${{ github.token }}");
-      assert.match(runScript(step), /test -n "\$ASF_GIT_READ_TOKEN"/);
-      assert.match(runScript(step), /export GIT_CONFIG_COUNT=1/);
-      assert.match(runScript(step), /GIT_CONFIG_KEY_0=http\.https:\/\/github\.com\/\.extraheader/);
-      assert.match(runScript(step), /GIT_CONFIG_VALUE_0=/);
+      if (step.name !== 'Check trusted policies and exact remote checkpoint' &&
+          step.name !== 'Select exact published plan checkpoint') {
+        assert.match(runScript(step), /test -n "\$ASF_GIT_READ_TOKEN"/);
+        assert.match(runScript(step), /export GIT_CONFIG_COUNT=1/);
+        assert.match(runScript(step), /GIT_CONFIG_KEY_0=http\.https:\/\/github\.com\/\.extraheader/);
+        assert.match(runScript(step), /GIT_CONFIG_VALUE_0=/);
+      } else {
+        assert.match(runScript(step), /git show "\$GITHUB_SHA:\.asf\/agentkit\/runtime\/stage\.sh"/);
+        assert.match(runScript(step), /bash "\$RUNNER_TEMP\/stage\.sh" (execute|publish|verify)/);
+      }
       assert.doesNotMatch(runScript(step), /git config\s+--(?:global|local|system)/);
     }
-    const modelSteps = workflow.jobs.execute.steps.filter((step) =>
-      /Execute.*(?:task|phase|sequence)|Configure trusted model policy/.test(step.name ?? ""));
+    const executeJobs = kit === 'opencode-direct' ? [workflow.jobs.execute] :
+      ['execute_plan','execute_repair','execute_apply','execute_finalize'].map(name=>workflow.jobs[name]);
+    const modelSteps = executeJobs.flatMap(job => job.steps).filter((step) =>
+      /Execute.*(?:task|phase|sequence)|Repair existing plan|Configure trusted model policy/.test(step.name ?? ""));
     assert.ok(modelSteps.length >= 2);
     for (const step of modelSteps) {
       assert.equal(step.env?.[marker], undefined);
       assert.doesNotMatch(runScript(step), /ASF_GIT_READ_TOKEN|GIT_CONFIG_VALUE_0/);
     }
-    const issueStep = workflow.jobs.publish.steps.find((step) =>
-      step.uses?.startsWith("actions/create-github-app-token@"));
-    assert.ok(issueStep);
-    assert.equal(issueStep.with["permission-contents"], "write");
-    assert.equal(issueStep.with["permission-pull-requests"], "write");
-    assert.ok(workflow.jobs.publish.steps.indexOf(issueStep) >
-      workflow.jobs.publish.steps.findIndex((step) =>
-        step.name === "Prepare trusted guard and check exact remote refs"),
-      "Publishing permissions must be minted after read-only preflight");
+    const publishJobs = kit === 'opencode-direct' ? [workflow.jobs.publish] :
+      ['publish_plan','publish_repair','publish_apply','publish_finalize'].map(name=>workflow.jobs[name]);
+    for (const publishJob of publishJobs) {
+      const issueStep = publishJob.steps.find((step) =>
+        step.uses?.startsWith("actions/create-github-app-token@"));
+      assert.ok(issueStep);
+      assert.equal(issueStep.with["permission-contents"], "write");
+      assert.equal(issueStep.with["permission-pull-requests"], "write");
+      assert.ok(publishJob.steps.indexOf(issueStep) >
+        publishJob.steps.findIndex((step) =>
+          /Check trusted policies|Prepare trusted guard/.test(step.name ?? '')),
+        "Publishing permissions must be minted after read-only preflight");
+    }
   });
 }
 
