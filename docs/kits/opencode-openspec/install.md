@@ -2,16 +2,16 @@
 
 Install the kit through a normal branch and PR. Plan for setup: this release has no complete one-line installer.
 
-Use Git, Node.js 26.13.0 LTS and npm. The 1.4.0 CLI candidate runs on
+Use Git, Node.js 26.13.0 LTS and npm. The published 1.4.0 CLI runs on
 Linux, macOS and Windows without needing procfs, Python or Go. The examples
 below use Bash, available in Git Bash on Windows. Verify the published release
-and immutable source SHA before installing; do not use an unpublished candidate
-as if it were a release.
+and immutable source SHA before installing; never install an unreleased candidate
+as if it were a published release.
 
 ## Portability and trust boundary in 1.4.0
 
 **Immutable 1.3.0 still requires Linux with accessible `/proc/self/fd`.**
-The Node.js 1.4.0 candidate removes that requirement and does not need
+The published Node.js 1.4.0 release removes that requirement and does not need
 Python, Go or precompiled helpers. Linux, macOS and Windows qualification
 passed at the reviewed source commit. Do not attribute these improvements to
 release 1.3.0.
@@ -49,7 +49,7 @@ CONFIG="$(pwd)/agentkit-config.json"
 cp "$SOURCE/kits/opencode-openspec/mvp-config.example.json" "$CONFIG"
 ```
 
-After publication, resolve the immutable 1.4.0 release tag once, then compare the full source SHA and release-manifest.json digest with the published release before executing the installer. The CLI reads Git objects at this commit. It does not authenticate the publisher.
+Resolve the published immutable 1.4.0 release tag once, then compare the full source SHA and release-manifest.json digest with the published release before executing the installer. The CLI reads Git objects at this commit. It does not authenticate the publisher.
 
 ## Prepare the Node installer
 
