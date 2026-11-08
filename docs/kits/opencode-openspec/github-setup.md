@@ -18,6 +18,22 @@ Names can be changed in the kit configuration before installation. Secret values
 
 You may reuse a suitable App across approved repositories. The kit does not require a new App for every repository.
 
+## Why a private repository needs a Git read token
+
+GitHub Actions already provides a short-lived `github.token` with `contents: read`
+for the target repository. The **trusted** preflight, branch-resume and
+publication-check steps use it to authenticate `git ls-remote` and `git fetch`
+on a private repository. They inject it only into the Git process environment
+for that step, without saving credentials in the checkout.
+
+The OpenCode/model steps do **not** receive that token or the GitHub App
+writer token. The GitHub App is minted **after** the publication checks,
+and is used only to push an ordinary branch and create a draft PR.
+
+Public repositories can be read anonymously, but writing to them always
+requires authorization. Do not grant `contents: write` to the model job
+to work around a failed private Git read.
+
 ## Check the actual rules
 
 Use the settings of the target repository. A JSON ruleset committed to Git does not activate a GitHub rule.

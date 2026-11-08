@@ -58,9 +58,17 @@ jobs:
           APP_ID_PRESENT: ${{ vars.@@APPIDVAR@@ }}
           APP_PRIVATE_KEY_PRESENT: ${{ secrets.@@APPPRIVATEKEYSECRET@@ }}
           PROVIDER_KEY_PRESENT: ${{ secrets.@@OPENROUTERSECRET@@ }}
+          ASF_GIT_READ_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
+          # Only this trusted step receives the read-only GitHub Actions token.
+          # The credential is ephemeral: never write it into .git/config.
+          test -n "$ASF_GIT_READ_TOKEN" || { echo "::error::GitHub read token unavailable"; exit 1; }
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
+          GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$ASF_GIT_READ_TOKEN" | base64 -w0)"
+          export GIT_CONFIG_VALUE_0
           test -n "$APP_ID_PRESENT" && test -n "$APP_PRIVATE_KEY_PRESENT" && test -n "$PROVIDER_KEY_PRESENT" || {
             echo "::error::Required App/provider setup missing; inspect manual-acceptance.md"; exit 1
           }
@@ -93,9 +101,18 @@ jobs:
         with:
           node-version: '26.13.0'
       - name: Load trusted policies and select exact observed branch
+        env:
+          ASF_GIT_READ_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
+          # Only this trusted step receives the read-only GitHub Actions token.
+          # The credential is ephemeral: never write it into .git/config.
+          test -n "$ASF_GIT_READ_TOKEN" || { echo "::error::GitHub read token unavailable"; exit 1; }
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
+          GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$ASF_GIT_READ_TOKEN" | base64 -w0)"
+          export GIT_CONFIG_VALUE_0
           test -n "$OPENROUTER_API_KEY" || { echo "::error::Provider key unavailable"; exit 1; }
           for file in scope.mjs model-policy.mjs checklist.mjs phase.sh; do
             git show "$GITHUB_SHA:.asf/agentkit/runtime/$file" > "$RUNNER_TEMP/$file"
@@ -161,9 +178,18 @@ jobs:
           name: agentkit-reviewed-scope-patch
           path: ${{ runner.temp }}/agentkit-patch
       - name: Prepare trusted guard and check exact remote refs
+        env:
+          ASF_GIT_READ_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
+          # Only this trusted step receives the read-only GitHub Actions token.
+          # The credential is ephemeral: never write it into .git/config.
+          test -n "$ASF_GIT_READ_TOKEN" || { echo "::error::GitHub read token unavailable"; exit 1; }
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
+          GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$ASF_GIT_READ_TOKEN" | base64 -w0)"
+          export GIT_CONFIG_VALUE_0
           git show "$GITHUB_SHA:.asf/agentkit/runtime/scope.mjs" > "$RUNNER_TEMP/scope.mjs"
           git fetch --no-tags origin "refs/heads/$DEFAULT_BRANCH"
           test "$(git rev-parse FETCH_HEAD)" = "$GITHUB_SHA" || {
