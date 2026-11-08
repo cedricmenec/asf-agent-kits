@@ -1,0 +1,4 @@
+# AgentKit templates must retain exact LF bytes in all worktrees, including
+# Git for Windows with core.autocrlf=true. The renderer deliberately rejects CRLF.
+kits/opencode-openspec/templates/** text eol=lf
+kits/opencode-direct/templates/** text eol=lf
