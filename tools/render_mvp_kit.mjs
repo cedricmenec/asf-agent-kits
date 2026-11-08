@@ -33,6 +33,11 @@ export const FILES = [
     "opsx-sync-quality.md",
   ].map((v) => [v + ".tmpl", ".asf/agentkit/" + v]),
 ];
+// Exact pre-checkpoint inventory. Historical immutable Git sources must keep
+// rendering their own nine files; adding the new runtime trio must not silently
+// rewrite 1.1.0-1.4.0 source trees or break their pinned source support.
+export const LEGACY_OPENSPEC_FILES = FILES.filter(([source]) =>
+  !["budget.mjs.tmpl", "publish.sh.tmpl", "stage.sh.tmpl"].includes(source));
 const checks = {
   targetRepository: REPO,
   defaultBranch: /^[A-Za-z0-9][A-Za-z0-9._/-]*$/,
@@ -98,11 +103,15 @@ export function profile(kit = "opencode-openspec") {
     ? { files: DIRECT_FILES, templates: "kits/opencode-direct/templates/" }
     : { files: FILES, templates: TEMPLATES };
 }
-export function render_mvp(source, config, kit = "opencode-openspec") {
+export function render_mvp(source, config, kit = "opencode-openspec", filesOverride = null) {
   const selected = profile(kit);
+  const entries = filesOverride || selected.files;
+  requireThat(entries === selected.files ||
+    (kit === "opencode-openspec" && entries === LEGACY_OPENSPEC_FILES),
+    "Invalid source inventory override");
   const root = safeRoot(source),
     vars = checked_config(config);
-  const files = selected.files
+  const files = entries
     .map(([src, dest]) => {
       const bytes = read_regular(root, selected.templates + src, 1048576);
       let text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);

@@ -8,7 +8,7 @@ import {
   hash,
 } from "./node/common.mjs";
 import { requestJson, ReadUnavailable } from "./asf_agentkit_github_read.mjs";
-import { profile, profile_lock_path, LEGACY_LOCK } from "./render_mvp_kit.mjs";
+import { profile, profile_lock_path, LEGACY_LOCK, LEGACY_OPENSPEC_FILES } from "./render_mvp_kit.mjs";
 export const BRANCH =
   /^asf-agentkit\/install-[a-z0-9](?:[a-z0-9-]{0,45}[a-z0-9])?$/;
 export class PublishRefused extends Error {}
@@ -245,7 +245,13 @@ export async function publish_draft(
     lockPath === LEGACY_LOCK || lockPath === profile_lock_path(lock.kitId),
     "Profile lock path/identity mismatch",
   );
-  const allowed = profile(lock.kitId).files.map((x) => x[1]);
+  const kitId = lock.kitId ?? (lockPath === LEGACY_LOCK ? "opencode-openspec" : null);
+  const current = profile(kitId).files.map((x) => x[1]);
+  const legacy = kitId === "opencode-openspec"
+    ? LEGACY_OPENSPEC_FILES.map((x) => x[1]) : [];
+  const allowed = [current, legacy].find(paths => paths.length &&
+    Object.keys(files || {}).length === paths.length &&
+    paths.every(p => Object.hasOwn(files || {}, p))) || current;
   requireThat(
     object(files) &&
       Object.keys(files).length === allowed.length &&
