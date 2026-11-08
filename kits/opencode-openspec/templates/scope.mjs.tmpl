@@ -1,7 +1,7 @@
 // Adapted from ThreadStep's agent-openspec-checkpoint.mjs and sync-guard.mjs.
 // No publication decision may be made from LLM-controlled files or claims.
 import { execFileSync } from 'node:child_process';
-import { lstatSync } from 'node:fs';
+import { lstatSync, readFileSync } from 'node:fs';
 
 const forbidden = new Set(['AGENTS.md', 'ChatGPT.md', 'opencode.json',
   'openspec/config.yaml', '.gitmodules', '.gitattributes', '.gitconfig',
@@ -17,6 +17,7 @@ export function safePath(path) {
 }
 
 export function allowed(phase, change, path) {
+  if (phase === 'repair-plan') phase = 'plan';
   if (!/^[a-z][a-z0-9]{1,8}-[0-9]{3}$/.test(change) || !safePath(path)) return false;
   const parts = path.split('/');
   const name = parts.at(-1).toLowerCase();
@@ -37,6 +38,28 @@ export function allowed(phase, change, path) {
   // The previously reviewed proposal/design/deltas stay immutable in apply.
   if (path.startsWith('openspec/')) return path === plan + 'tasks.md';
   return true;
+}
+
+// A checkpoint is durable and may be reviewed by other people. Reject known
+// credential formats and the exact provider credential before creating even
+// the untrusted patch artifact. This complements, but cannot replace, runner
+// isolation and provider-side secret controls.
+export function scanPlanContents(entries, providerKey = '') {
+  for (const path of entries) {
+    let bytes;
+    try {
+      if (lstatSync(path).size > 512 * 1024) throw Error('oversized');
+      bytes = readFileSync(path);
+    } catch {
+      throw Error('Unsafe plan content or unreadable plan file');
+    }
+    if (bytes.includes(0) ||
+        (providerKey.length >= 12 && bytes.includes(Buffer.from(providerKey))) ||
+        /-----BEGIN [A-Z ]*PRIVATE KEY-----|\b(?:sk-or-v1-|github_pat_|ghp_|gho_|ghu_)[A-Za-z0-9_-]{12,}/i.test(bytes.toString('utf8'))) {
+      throw Error('Possible credential in plan; checkpoint publication refused');
+    }
+  }
+  return entries.length;
 }
 
 function git(args) {
@@ -70,7 +93,12 @@ if (process.argv[1]?.endsWith('/scope.mjs')) {
   try {
     const [, , mode, phase, change] = process.argv;
     if (!['all', 'staged'].includes(mode)) throw Error('Usage: scope.mjs all|staged phase change');
-    console.log('Validated ' + checkPaths(phase, change, paths(mode)) + ' changed paths');
+    const entries = paths(mode);
+    console.log('Validated ' + checkPaths(phase, change, entries) + ' changed paths');
+    if (phase === 'plan' || phase === 'repair-plan') {
+      scanPlanContents(entries, process.env.OPENROUTER_API_KEY ?? '');
+      console.log('Plan checkpoint safety scan passed');
+    }
   } catch (error) {
     console.error('::error::Scope refused: ' + error.message);
     process.exitCode = 1;

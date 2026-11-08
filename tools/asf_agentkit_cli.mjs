@@ -29,6 +29,7 @@ import {
 } from "./node/secure-fs.mjs";
 import {
   FILES,
+  LEGACY_OPENSPEC_FILES,
   DIRECT_FILES,
   KIT_IDS,
   profile_lock_path,
@@ -169,11 +170,12 @@ function check_coinstallation(root, config, kit) {
       "Other profile workflow missing or drifted",
     );
     const workflow = parseYaml(bytes.toString("utf8"));
-    requireThat(
-      workflow?.jobs?.execute?.concurrency?.group === config.mutexGroup &&
-        workflow.jobs.execute.concurrency["cancel-in-progress"] === false,
-      "Co-installed profiles must share the same paid execution mutex",
-    );
+    const paid = Object.entries(workflow?.jobs || {}).filter(([name]) =>
+      name === "execute" || name.startsWith("execute_"));
+    requireThat(paid.length > 0 && paid.every(([, job]) =>
+      job?.concurrency?.group === config.mutexGroup &&
+      job.concurrency["cancel-in-progress"] === false),
+    "Co-installed profiles must share the same paid execution mutex");
   }
 }
 export function source_snapshot(
@@ -224,13 +226,23 @@ export function rendered_source(
     selected = profile(kit),
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), "asf-agentkit-source-"));
   try {
-    for (const [name] of selected.files) {
+    let inventory = selected.files;
+    if (kit === "opencode-openspec") {
+      const sourceRoot = checkout(source, "cedricmenec/asf-agent-kits");
+      const trio = ["budget.mjs.tmpl", "publish.sh.tmpl", "stage.sh.tmpl"];
+      const present = trio.filter(name =>
+        git(sourceRoot, "ls-tree", "-z", commit, "--", selected.templates + name).length);
+      requireThat(present.length === 0 || present.length === trio.length,
+        "Incomplete checkpoint runtime in pinned source");
+      if (present.length === 0) inventory = LEGACY_OPENSPEC_FILES;
+    }
+    for (const [name] of inventory) {
       const p = path.join(tmp, selected.templates, name);
       fs.mkdirSync(path.dirname(p), { recursive: true });
       fs.writeFileSync(p, read(selected.templates + name));
     }
     return Object.fromEntries(
-      render_mvp(tmp, config, kit).files.map((f) => [
+      render_mvp(tmp, config, kit, inventory).files.map((f) => [
         f.path,
         Buffer.from(f.contentBase64, "base64"),
       ]),

@@ -7,34 +7,39 @@ GitHub Actions controls the order. OpenCode performs the agent work. OpenSpec st
 ```mermaid
 flowchart LR
  T["Backlog task"] --> P["Plan: proposal and specs"]
- P --> A["Apply: code and tests"]
+ P --> C["Remote branch + draft PR checkpoint"]
+ C --> V{"Strict plan gate on remote SHA"}
+ V -->|Valid| A["Apply: code and tests"]
+ V -->|Invalid| R["Stop or one budgeted repair"]
+ R --> C
  A --> F["Finalize: sync and archive"]
  F --> PR["Draft PR"]
  PR --> CI["Project CI"]
  CI --> H["Human review"]
 ```
 
-In staged mode, plan and apply each publish to the same work branch. In auto mode, intermediate work stays in the execution job and one final patch is published after the sequence succeeds.
+Both staged and auto modes publish the plan before `apply`. The quality gate checks that exact remote SHA. In auto, an invalid plan blocks `apply`; with an explicitly budgeted single repair, it can return to the checkpoint and be checked again. A failed gate leaves the already-safe plan accessible for review, not an approved implementation.
 
-## Three jobs with separate roles
+## Separate execution, verification and publication roles
 
 ```mermaid
 flowchart LR
  subgraph G["GitHub Actions"]
-  P["Prepare: check request"] --> E["Execute: OpenCode and tests"]
-  E --> X["Patch artifact"] --> U["Publish: recheck and open PR"]
+  P["Prepare: request, App, budget"] --> E["Execute plan: OpenCode"]
+  E --> U["Publish scoped checkpoint"]
+  U --> V["Verify exact SHA without model"]
+  V --> A["Execute apply after passing gate"]
  end
  O["OpenRouter"] <--> E
  K["GitHub App token"] --> U
- U --> R["Work branch and draft PR"]
- R --> C["Independent project CI"]
+ A --> C["Publish and independent CI"]
 ```
 
-Prepare checks the actor, repository, branch, first attempt, task, phase and model. It observes the work branch tip.
+Prepare checks the actor, repository, branch, first attempt, task, phase, model and project prerequisites. It mints a short-lived GitHub App token with required `contents`/`pull-requests` write permissions and probes repository access **before** the first model execution. Optional repair also needs a valid bounded provider-key budget at prepare time.
 
-Execute starts a separate Ubuntu runner, reads guard scripts from the dispatch commit, selects the observed work branch and installs fixed OpenCode and OpenSpec versions. It receives the provider key. It does not receive the App publication token.
+Each execution starts a separate Ubuntu runner, reads guard scripts from the trusted dispatch commit, selects the *exact* observed work branch tip and installs fixed OpenCode and OpenSpec versions. It receives the provider key. It does not receive the App publication token. Each paid execution uses the configured concurrency group.
 
-Publish runs on another runner. It checks that the default and work branch refs have not moved, checks the patch and scope, then creates a short-lived App token to push an ordinary branch and create or update a draft PR.
+Each publish runs on another runner. It checks that the default and work branch refs have not moved, checks the patch and scope, then mints an App token to push an ordinary branch and create or update a draft PR. No force-push or protected ref write is allowed. After plan publication, a separate no-model job checks the remote SHA using the OpenSpec strict validator, checklist contract and project's configured `npm run` check. A second exact-tip check prevents stale apply or repair.
 
 ## Separate agent roles
 
@@ -52,11 +57,11 @@ These checks enforce defined rules. They do not prove that a spec is the right s
 
 The task and OpenSpec config are project inputs. Changes live under openspec/changes/\<task-id>/. Shared specs live under openspec/specs/. Archives live under openspec/changes/archive/.
 
-The work branch and PR carry state between staged runs. The kit has no general durable checkpoint or automatic recovery engine.
+The work branch and draft PR carry a durable intermediate plan checkpoint and the eventual code/archived specs. This is not a general recovery engine; a manual `apply` dispatch can reuse a validated existing plan. The workflow emits phase checkpoint SHA and quality result in GitHub summaries.
 
 ## Runtime baseline
 
-The published template pins OpenCode 1.19.0, OpenSpec 1.14.1 and Node.js 22.23.3 on ubuntu-24.04. GitHub Actions are pinned to commits. Pinning supports repeatability; review updates as dependencies change.
+The proposed template pins OpenCode 1.19.0, OpenSpec 1.14.1 and Node.js 26.13.0 on ubuntu-24.04. GitHub Actions are pinned to commits. Pinning supports repeatability; review updates as dependencies change. These changes are not part of already published 1.4.0 tags.
 
 ## Continue
 

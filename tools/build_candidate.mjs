@@ -79,8 +79,15 @@ export function pinned_openspec_runtime(root, commit) {
       /^[ \t]+npm install --global @fission-ai\/openspec@([0-9]+\.[0-9]+\.[0-9]+) opencode-ai@([0-9]+\.[0-9]+\.[0-9]+)[ \t]*$/gm,
     ),
   ];
+  const verifyPackages = [
+    ...text.matchAll(
+      /^[ \t]+npm install --global @fission-ai\/openspec@([0-9]+\.[0-9]+\.[0-9]+)[ \t]*$/gm,
+    ),
+  ];
   requireThat(
-    nodes.length === 2 && new Set(nodes).size === 1 && packages.length === 1,
+    nodes.length >= 2 && new Set(nodes).size === 1 && packages.length >= 1 &&
+      new Set(packages.map(p => p[1] + '/' + p[2])).size === 1 &&
+      verifyPackages.every(p => p[1] === packages[0][1]),
     "Inconsistent explicit runtime pins",
   );
   return {

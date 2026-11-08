@@ -140,7 +140,7 @@ test("#119: actual Node CLI dry-run, apply, status, doctor on " + process.platfo
     assert.equal(dry.writesPerformed, false);
     const applied = call(["install", ...baseArgs, "--apply", "--expected-head", head]);
     assert.equal(applied.status, "applied-locally-uncommitted");
-    assert.equal(applied.createdFiles, 10);
+    assert.equal(applied.createdFiles, render_mvp(ROOT, cfg, 'opencode-openspec').files.length + 1);
     const status = call(["status", "--repo", cfg.targetRepository, "--checkout", target]);
     assert.equal(status.status, "hash-match");
     const doctor = call(["doctor", "--repo", cfg.targetRepository, "--checkout", target,

@@ -28,6 +28,8 @@ Changing a config value changes the rendered files. Keep a copy of the exact con
 | task\_id | 1-999 or configured PREFIX-NNN |
 | phase | auto (default), plan, apply, finalize |
 | model | One exact model ID below |
+| repair\_calls | 0 (default) or 1 extra plan repair after a failed strict gate |
+| budget\_usd | 0 (default), or positive decimal USD envelope when repair\_calls=1, up to 100.00 |
 
 Current model IDs:
 
@@ -65,15 +67,18 @@ The advanced install --pr App-JWT path exists in the code, but has not been qual
 .asf/agentkit/runtime/request.mjs
 .asf/agentkit/runtime/scope.mjs
 .asf/agentkit/runtime/model-policy.mjs
+.asf/agentkit/runtime/budget.mjs
 .asf/agentkit/runtime/checklist.mjs
 .asf/agentkit/runtime/phase.sh
+.asf/agentkit/runtime/publish.sh
+.asf/agentkit/runtime/stage.sh
 .asf/agentkit/manual-acceptance.md
 .asf/agentkit/openspec-checklist.md
 .asf/agentkit/opsx-sync-quality.md
 .asf/agentkit.lock.json
 ```
 
-The nine managed files have hashes in the lock. The lock also records the repository, kit version, source commit and configuration hash. Its trust label is user-pinned-git-object-unattested. A hash match checks local consistency, not publisher identity.
+The twelve managed files have hashes in the lock. The lock also records the repository, kit version, source commit and configuration hash. Its trust label is user-pinned-git-object-unattested. A hash match checks local consistency, not publisher identity.
 
 `AGENTS.md`, OpenSpec project config, backlog, product code, product tests and CI remain project-owned. The installer does not generate them.
 
@@ -85,11 +90,11 @@ Task checkboxes must describe executable implementation work. Put manual accepta
 
 ### Checklist contract and gate
 
-During `plan`, `apply` and `finalize`, the trusted `checklist.mjs` gate rejects tasks that require manual/real-device acceptance, post-sync/PR/CI approval or mixed visual acceptance. Passing `openspec validate --strict` alone does not prove that every checkbox is executable during `apply`.
+After the remote `plan` checkpoint, and before every `apply`, the trusted `checklist.mjs` gate rejects tasks that require manual/real-device acceptance, post-sync/PR/CI approval or mixed visual acceptance. It is also used during `apply` and `finalize`. Passing `openspec validate --strict` alone does not prove that every checkbox is executable during `apply`.
 
 For example, `- [ ] Implement visually hidden labels with automated DOM assertions` is an executable checkbox. Automated Playwright tests in a real browser are also executable when their assertions are deterministic. A checkbox that appends `Verify: ... WHEN a user observes ... THEN visually distinguishable` is mixed and is rejected. Keep the implementation/tests checkbox, then put the human observation in `## Manual acceptance` as prose without `[ ]`. Put sync/archive, independent CI and merge review in `## Post-sync review`, also without checkboxes. Observable scenarios can remain in OpenSpec delta specs.
 
-Refusals emit a stable `ASF-OPSX-*` rule code and a `tasks.md` line number with a suggested fix, without echoing model-authored task text. The gate does not automatically rewrite a plan or trigger another model call. In 1.4.0, an invalid plan in `auto` can still stop execution before publication; durable intermediate checkpoints are tracked separately in [issue #127](https://github.com/cedricmenec/asf-agent-kits/issues/127).
+Refusals emit a stable `ASF-OPSX-*` rule code and a `tasks.md` line number with a suggested fix, without echoing model-authored task text. The gate does not silently trigger a model call. The workflow publishes a scoped plan before this gate; when `repair_calls=1` and the key has a verified spending bound, one extra model repair can be attempted, re-published and re-validated. The 1.4.0 published release still has the earlier behavior; this is the proposed [issue #127](https://github.com/cedricmenec/asf-agent-kits/issues/127) implementation.
 
 ## Continue
 

@@ -36,14 +36,17 @@ export const RELEASE_PATHS = [
   ),
   ...[
     "agent-openspec.yml",
+    "budget.mjs",
     "checklist.mjs",
     "manual-acceptance.md",
     "model-policy.mjs",
     "openspec-checklist.md",
     "opsx-sync-quality.md",
     "phase.sh",
+    "publish.sh",
     "request.mjs",
     "scope.mjs",
+    "stage.sh",
   ].map((p) => `kits/${KIT}/templates/${p}.tmpl`),
   ...["agentkit-config", "agentkit-lock", "release", "release-claim"].map(
     (p) => `schemas/${p}.schema.json`,

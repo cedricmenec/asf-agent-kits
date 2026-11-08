@@ -34,7 +34,9 @@ if (name === "openspec") {
   process.exit(0);
 }
 if (name === "opencode") {
-  const phase = args.includes("--command")
+  const phase = process.env.PHASE === 'repair-plan'
+    ? 'repair'
+    : args.includes("--command")
     ? "sync"
     : fs.existsSync(change + "/proposal.md")
       ? "apply"
@@ -43,6 +45,8 @@ if (name === "opencode") {
   if (process.env.FAIL_OPENCODE_PHASE === phase) process.exit(42);
   if (phase === "sync")
     put("openspec/specs/demo/spec.md", "Canonical semantic sync output\n");
+  else if (phase === 'repair')
+    put(change + '/tasks.md', '## Tasks\n- [ ] Implement feature and test with deterministic assertions\n');
   else if (phase === "plan")
     for (const [p, s] of Object.entries({
       "proposal.md": "Proposal\n",

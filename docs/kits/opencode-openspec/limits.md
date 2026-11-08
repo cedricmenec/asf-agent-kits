@@ -10,7 +10,7 @@ Use one task at a time, review the spec and PR, and control provider spending. R
 | Parallel work | Execute jobs share a configured repository concurrency group |
 | Queue | No backlog scheduler or task-wave queue |
 | Models | Three fixed OpenRouter entries; no OpenAI entry |
-| Auto | Sequential plan, apply and spec sync; no human pause |
+| Auto | Plan checkpoint and strict remote-SHA gate before apply and sync; no human pause after a passing gate |
 | Recovery | Manual inspection and new dispatch when appropriate |
 | Merge | Draft PR only; no automatic merge |
 | Project support | Current runtime expects a Node/npm project with a lockfile |
@@ -57,7 +57,7 @@ included in the 1.3.0 tag.
 
 ## One task at a time: precise meaning
 
-Only the execute job is inside the concurrency group. Prepare and publish are outside it. With cancel-in-progress false, a running execution is not cancelled by a new one.
+Each execution job (plan, optional repair, apply, finalize) is inside the same configured concurrency group. Prepare, verification and publication are outside it. With cancel-in-progress false, a running execution is not cancelled by a new one. Independent dispatches may interleave between phases; each transition verifies its exact expected remote SHA and refuses a stale branch.
 
 GitHub concurrency is not a reliable queue for many tasks; pending runs may be replaced. It is scoped to one repository and group, not a global budget lock. Do not use overlapping dispatches as a scheduler. Wait for the full run and review its result before starting another task.
 
@@ -69,13 +69,15 @@ The model job still has a provider key and network access. Generated code, tests
 
 ## Costs
 
-Auto starts up to three OpenCode phase invocations. Each can make several API requests, so this is not a three-request billing cap. The execute job has a 60-minute timeout, not a dollar limit. GitHub compute may also consume your Actions allowance or incur charges.
+Auto normally starts up to three OpenCode phase invocations. Each can make several API requests, so this is not a three-request billing cap. An optional one-shot repair after a failed plan gate adds **one** more OpenCode invocation, only within an explicitly selected workflow envelope and an independently configured non-resetting OpenRouter key spending cap. Each execution job has a 60-minute timeout, not a dollar limit. GitHub compute may also consume your Actions allowance or incur charges.
 
-No automatic paid retry is implemented. Re-running an existing attempt is refused; a new manual dispatch may start new paid work.
+The optional repair uses `repair_calls=1` plus a positive `budget_usd` (at most 100 USD). The read-only preflight checks OpenRouter's key status, non-resetting limit and remaining allowance before any model work, and again before the repair. A missing key, unknown limit, resetting cap, management key or remaining cap greater than the requested envelope fails closed. The key should be dedicated to this task. **Provider accounting is not an atomic per-invocation reservation**: concurrent calls, in-flight usage or a provider overshoot may still change actual billing. Treat this as a provider-side spending control, not a transactional hard guarantee. Normal plan/apply/finalize spending remains subject to the owner's dispatch decision and the provider key's limits.
+
+No unbounded paid retry is implemented. The only automatic additional paid invocation is the optional single plan repair inside its prepaid authorization envelope. Re-running an existing attempt is refused; a new manual dispatch may start new paid work.
 
 ## Scope restrictions
 
-Plan can change only its OpenSpec change directory. Apply protects the reviewed proposal, design and delta specs; it can update the task checklist and allowed product paths. Workflows, agent runtime, project context and several sensitive file types are protected. Product deletions are generally refused by the current guard.
+Plan and repair can change only their OpenSpec change directory. Before publishing them, the guard rejects known credential patterns, binary content and oversized files. This is a best-effort scan, not a guarantee that every sensitive string is detectable. Apply protects the reviewed proposal, design and delta specs; it can update the task checklist and allowed product paths. Workflows, agent runtime, project context and several sensitive file types are protected. Product deletions are generally refused by the current guard.
 
 Finalization may update shared specs and move the active change to an archive. The exact rules live in scope.mjs. A passing scope check is a file rule check, not a full security assessment.
 

@@ -102,6 +102,29 @@ const run = (target, runtime, env, phase) =>
     encoding: "utf8",
     timeout: 120000,
   });
+test('#127 offline checkpoint verifies strict plan before apply and repairs once', () =>
+  fixture(({ target, runtime, env }) => {
+    const plan = run(target, runtime, {...env, ASF_PLAN_CHECKPOINT_ONLY: '1'},'plan');
+    assert.equal(plan.status,0,plan.stderr);
+    commit(target);
+    const good = run(target,runtime,env,'verify-plan');
+    assert.equal(good.status,0,good.stderr);
+    const callsBefore = fs.readFileSync(env.MOCK_LOG,'utf8').split('opencode-phase ').length;
+    const tasks = path.join(target,'openspec/changes/ts-009/tasks.md');
+    fs.writeFileSync(tasks,'## Tasks\n- [ ] Inspect UI visually on real phone.\n');
+    const invalid = run(target,runtime,env,'verify-plan');
+    assert.notEqual(invalid.status,0,'Invalid checkpoint must not authorize apply');
+    assert.match(invalid.stderr,/ASF-OPSX/);
+    assert.equal(fs.readFileSync(env.MOCK_LOG,'utf8').split('opencode-phase ').length,callsBefore,
+      'Quality verification never invokes a model');
+    const repair = run(target,runtime,env,'repair-plan');
+    assert.equal(repair.status,0,repair.stderr);
+    execFileSync(process.execPath,[path.join(runtime,'scope.mjs'),'all','repair-plan','ts-009'],
+      {cwd:target,env});
+    assert.equal(run(target,runtime,env,'verify-plan').status,0);
+    assert.equal(fs.existsSync(path.join(target,'src/new-feature.txt')),false,
+      'Repair must not write product code');
+  }));
 for (const failure of [null, "apply", "sync"])
   test(
     "auto phases " +

@@ -29,7 +29,7 @@ flowchart LR
   P --> R["CI and human review"]
 ```
 
-Choose staged runs to review the plan before implementation. Choose auto to run plan, apply and spec sync in sequence in one run. Auto has no human stop between these steps.
+Choose staged runs to review the plan before implementation. In the proposed checkpoint workflow, auto publishes the plan as a draft PR, verifies its exact remote SHA, and only then proceeds to apply and spec sync. Auto has no human stop after a passing gate, but it blocks an invalid plan. At most one additional repair invocation may be enabled under a separately bounded budget.
 
 ## Keep intent over time
 

@@ -176,10 +176,10 @@ test("CLI create-only install, idempotence, status, doctor, upgrade and Git roll
   fixture((root) => {
     const f = setup(root);
     const p = cli.plan(f.target, f.cfg, f.files, null, f.lock, "install");
-    assert.equal(p.operations.length, 10);
+    assert.equal(p.operations.length, Object.keys(f.files).length + 1);
     assert.equal(
       cli.create_only(f.target, f.files, f.lock, p, f.head, "main"),
-      10,
+      Object.keys(f.files).length + 1,
     );
     assert.equal(
       cli.status(f.target, f.cfg.targetRepository).status,
@@ -477,6 +477,6 @@ test("rendered Node LTS workflow syntax and scope smoke", async () => {
         path.join(ROOT, "kits/opencode-openspec/mvp-config.example.json"),
       ),
     ),
-    9,
+    FILES.length,
   );
 });

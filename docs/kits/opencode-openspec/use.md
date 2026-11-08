@@ -26,19 +26,21 @@ Put project context in openspec/config.yaml. Keep human acceptance work separate
 
 ## 2. Start the workflow
 
-In your target repository, open Actions → AgentKit OpenSpec (manual, staged or auto) → Run workflow. Choose the configured default branch.
+In your target repository, open Actions → AgentKit OpenSpec (checkpoint and pre-apply gate) → Run workflow. Choose the configured default branch.
 
-Set task\_id to TS-009, phase to plan and model to one of the listed models. Launching the run can incur provider charges. The owner must make that choice.
+Set task\_id to TS-009, phase to plan and model to one of the listed models. Keep `repair_calls=0` and `budget_usd=0` for the default behavior. Launching a run can incur provider charges. The owner must make that choice.
 
 ## 3. Review the plan
 
-A successful plan creates branch agent/openspec/TS-009 and a draft PR. Read `proposal.md`, `design.md`, specs/\<capability>/`spec.md` and `tasks.md` under openspec/changes/ts-009/.
+A plan first creates branch agent/openspec/TS-009 and a draft PR, **even if its later strict quality verification fails**. Read `proposal.md`, `design.md`, specs/\<capability>/`spec.md` and `tasks.md` under openspec/changes/ts-009/.
+
+The workflow then checks the **exact published SHA** without calling the model: required files, executable checklist rules, strict OpenSpec validation and project tests. A failed gate explicitly blocks `apply`, prints the refusal in Actions, and preserves the remote checkpoint. A dangerous patch (forbidden paths or recognizable credentials) is refused *before* publication.
 
 Check that the spec matches the task, scope is clear, acceptance scenarios are observable and implementation checkboxes can be verified automatically. Keep the plan on the work branch for the next step. Apply resumes this branch.
 
 ## 4. Implement
 
-Start a new dispatch for the same task with phase apply. You may select a different allowed model for this separate run. Apply uses the existing plan branch, writes code and tests, updates `tasks.md` and updates the same PR.
+After a passing gate and your review, start a new dispatch for the same task with phase apply. You may select a different allowed model for this separate run. Apply revalidates the current remote plan before its first paid call, then writes code and tests, updates `tasks.md` and updates the same PR.
 
 The workflow runs the project's checks and OpenSpec validation. Independent PR CI then checks the published commit. Review the actual diff and CI for that commit.
 
@@ -50,7 +52,15 @@ If you use this staged flow, finish the desired phases before merging the work b
 
 ## Auto option
 
-Auto performs plan → apply → spec sync/archive in one run, with checks and stop-on-error behavior. It has no human approval pause between phases and uses one selected model throughout.
+Auto performs plan → **publish checkpoint → verify remote SHA** → apply → publish → spec sync/archive → publish in one run, with checks and stop-on-error behavior. It has no human approval pause between successful gates and uses one selected model throughout. The intermediate PR is marked draft and cannot be interpreted as human acceptance.
+
+## Optional one-shot plan repair
+
+Set `repair_calls=1` and a positive `budget_usd` (e.g. `0.25`) **only** if you intend to authorize an additional model invocation after a failed plan gate. Both inputs are required. The same explicit dispatch then authorizes at most **one** automatic repair invocation, a new scoped remote checkpoint, and another strict verification. The model cannot edit product files during repair.
+
+Before enabling it, configure the provider key with a **non-resetting, provider-enforced** spending limit, ideally on a dedicated key, whose remaining cap is no greater than your selected budget. The preflight reads OpenRouter's own key limits using a **read-only** API request; an unknown, resettable or insufficiently bounded key blocks the workflow *before* plan execution. The key is checked again before repair. This is a bound on the key's remaining allowance, not an exact per-request price guarantee; provider accounting and in-flight costs remain risks. This opt-in does not make the normal plan, apply and finalize invocations free or dollar-capped.
+
+The repair option is not applicable to separate `apply` or `finalize` dispatches. To fix a previously rejected plan manually, inspect the branch and PR, correct the OpenSpec files under ordinary review, then dispatch `apply`, which re-runs the gate. Do not force-push or bypass checks.
 
 Auto and plan require the task branch to be absent. If it already exists, inspect it and use apply or finalize only when the existing state supports that phase.
 
