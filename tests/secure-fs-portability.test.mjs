@@ -67,3 +67,12 @@ test("#119: an unsupported platform must not silently use pathname writes", (t) 
     assert.deepEqual(fs.readdirSync(root), []);
   });
 });
+
+test("#119: macOS fdesc-backed directory operations are verified before use", (t) => {
+  if (process.platform !== "darwin") return t.skip("macOS-only capability");
+  fixture((root) => {
+    const id = exclusiveFile(root, "nested/checked.txt", Buffer.from("payload"));
+    assert.ok(id);
+    assert.equal(observe(root, "nested/checked.txt").toString(), "payload");
+  });
+});
