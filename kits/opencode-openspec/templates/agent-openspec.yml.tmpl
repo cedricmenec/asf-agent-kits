@@ -184,7 +184,7 @@ jobs:
 
   publish_plan:
     needs: [prepare, execute_plan]
-    if: needs.execute_plan.result == 'success'
+    if: always() && needs.prepare.result == 'success' && needs.execute_plan.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -376,7 +376,7 @@ jobs:
 
   publish_repair:
     needs: [prepare, publish_plan, execute_repair]
-    if: needs.execute_repair.result == 'success'
+    if: always() && needs.prepare.result == 'success' && needs.publish_plan.result == 'success' && needs.execute_repair.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -545,7 +545,7 @@ jobs:
 
   publish_apply:
     needs: [prepare, execute_apply]
-    if: needs.execute_apply.result == 'success'
+    if: always() && needs.prepare.result == 'success' && needs.execute_apply.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -670,7 +670,7 @@ jobs:
 
   publish_finalize:
     needs: [prepare, execute_finalize]
-    if: needs.execute_finalize.result == 'success'
+    if: always() && needs.prepare.result == 'success' && needs.execute_finalize.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
