@@ -45,6 +45,28 @@ test('#127 rendered workflow publishes plan before strict quality gate and any a
   assert.ok(direct.every(f => !f.path.endsWith('/budget.mjs') && !f.path.endsWith('/stage.sh')));
 });
 
+test('publisher jobs remain eligible after optional upstream jobs are skipped', () => {
+  // GitHub implicitly adds success() to job-level if conditions without a
+  // status function. execute_apply can succeed even when verify_repair is
+  // skipped, so publish_apply must explicitly check its direct dependencies.
+  const jobs = workflow.jobs;
+  for (const [phase, extraRequirements] of Object.entries({
+    plan: [],
+    repair: ["needs.publish_plan.result == 'success'"],
+    apply: [],
+    finalize: []
+  })) {
+    const job = jobs['publish_' + phase];
+    assert.match(job.if, /^always\(\) && /,
+      'publish_' + phase + ' must override implicit success() on skipped ancestors');
+    assert.match(job.if, /needs\.prepare\.result == 'success'/);
+    assert.ok(job.if.includes("needs.execute_" + phase + ".result == 'success'"));
+    for (const requirement of extraRequirements) assert.ok(job.if.includes(requirement));
+  }
+  assert.ok(jobs.execute_apply.if.startsWith('always()'));
+  assert.ok(jobs.verify_repair.if.startsWith('always()'));
+});
+
 test('#127 repair budget must be explicit, non-resetting, provider-enforced and finite', async () => {
   assert.deepEqual(budgetPolicy('0', '0'), { repairCalls: 0, maxUsd: 0 });
   assert.deepEqual(budgetPolicy('1', '0.25'), { repairCalls: 1, maxUsd: .25 });
