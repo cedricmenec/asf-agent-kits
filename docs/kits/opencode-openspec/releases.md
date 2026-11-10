@@ -1,9 +1,8 @@
 # Releases and evidence
 
-**Release target: 1.5.0.** Before installing a version, verify that its GitHub
+**Release target: 1.5.1.** Before installing a version, verify that its GitHub
 release is actually published and immutable, with a matching pinned source SHA
-and manifest. At the time of 1.5.0 preparation, 1.4.0 was the latest published
-release.
+and manifest. The latest published release is 1.5.0; 1.5.1 is being prepared.
 
 1.4.0 included the private
 GitHub read-authentication fix (#118) and portable Node.js CLI fix (#119).
@@ -11,29 +10,24 @@ Use the immutable GitHub tag, verify the complete pinned source SHA and
 release-manifest SHA-256, and review the residual TOCTOU threat model before
 installing or upgrading.
 
-## 1.5.0 (prepared; verify publication status on GitHub)
+## 1.5.1 (prepared; not yet published)
 
-- OpenSpec `plan` now publishes a scoped intermediate draft-PR checkpoint and
-  verifies the exact remote SHA before `apply`, including in `auto` mode.
-- A failing strict plan gate blocks `apply` with an actionable diagnostic;
-  potentially unsafe output is rejected before checkpoint publication.
-- Optional automatic plan repair is bounded to one additional model invocation
-  per dispatch with explicit `repair_calls` and `budget_usd` inputs, verified
-  against a non-resetting OpenRouter key limit. The default remains no repair.
-- The published installer inventory will contain 12 managed OpenSpec files,
-  compared with 9 in older releases. Historical pinned-source rendering and
-  co-installed OpenCode Direct mutex compatibility remain supported.
-- The GitHub App publishing token remains in separate jobs, never given to the
-  OpenCode execution runner. A provider cap is not an atomic billing reservation.
-- No paid OpenCode execution, live repair qualification, auto-merge or
-  privileged deployment is claimed by the catalogue tests.
-- Planned immutable tag: `kits/opencode-openspec/v1.5.0`. Its **exact source
-  commit SHA and manifest digest are not yet known**; record them after the
-  version-bump PR is merged and the read-only manifest job completes.
+- Fixes a GitHub Actions status-condition edge case that could silently skip
+  `publish_apply` after the successful `execute_apply` job when an optional
+  ancestor was skipped. All four OpenSpec publication jobs now check their
+  required direct dependencies explicitly while bypassing the implicit
+  success condition inherited from skipped ancestors.
+- Adds regression coverage for the rendered workflow. The fix does not alter
+  paid model usage, permissions, or credential isolation.
+- No live qualification of the fixed publication path is claimed. Qualify the
+  workflow on a test repository before relying on it in production.
+- Planned immutable tag: `kits/opencode-openspec/v1.5.1`. Its exact source
+  commit SHA and manifest digest will be recorded after the version-bump PR is
+  merged and the read-only release-evidence workflow completes.
 
-[Prepared release notes](RELEASE_NOTES_1.5.0.md) · [PR #129, feature implementation](https://github.com/cedricmenec/asf-agent-kits/pull/129) · [Issue #127](https://github.com/cedricmenec/asf-agent-kits/issues/127)
+[Prepared release notes](RELEASE_NOTES_1.5.1.md) · [PR #132, fix](https://github.com/cedricmenec/asf-agent-kits/pull/132)
 
-### Publication procedure for 1.5.0
+### Publication procedure for 1.5.1
 
 1. Merge the dedicated version-bump PR after its non-paying CI passes. Do not
    create the tag from the unmerged PR SHA.
@@ -42,20 +36,29 @@ installing or upgrading.
    `main`. Confirm its run SHA is the exact intended release source commit.
 3. Download its `opencode-openspec-release-evidence-<SHA>` artifact. It contains
    `release-manifest.json`, `release-manifest.sha256` and
-   `RELEASE_NOTES_1.5.0.md`. Verify the manifest's `sourceCommitSha`,
+   `RELEASE_NOTES_1.5.1.md`. Verify the manifest's `sourceCommitSha`,
    `kitVersion`, `releaseTag`, paths and checksum. No LLM is called.
-4. Create the annotated tag `kits/opencode-openspec/v1.5.0` **at that exact
+4. Create the annotated tag `kits/opencode-openspec/v1.5.1` **at that exact
    commit**. Prefer creating the tag with `git tag -a` using the verified
    source SHA, then pushing only that tag; do not use a moving branch as proof
    of identity.
 5. On [GitHub's new release form](https://github.com/cedricmenec/asf-agent-kits/releases/new),
-   select the existing tag, title it `ASF AgentKit OpenCode + OpenSpec 1.5.0`,
+   select the existing tag, title it `ASF AgentKit OpenCode + OpenSpec 1.5.1`,
    paste the prepared notes and attach **all three files** from the artifact.
    Mark it as the latest stable release, not a prerelease. Save a draft first,
    review its tag and assets, then publish. Immutable releases cannot later
    replace missing or incorrect assets.
 6. Check the published release tag, manifest and source SHA. Installation or
    upgrading of business repositories is a separate reviewed operation.
+
+## 1.5.0 (published, immutable)
+
+- Includes the durable plan checkpoint, blocking pre-apply gate and optional
+  bounded plan repair described in [the 1.5.0 release notes](RELEASE_NOTES_1.5.0.md).
+- Tag: `kits/opencode-openspec/v1.5.0`, pointing to source commit
+  `97d6d453c8097b3d4b2b205d42c4568a013f2c2d`.
+- Release-evidence workflow: [run #42525946739](https://github.com/cedricmenec/asf-agent-kits/actions/runs/42525946739).
+- [Published immutable release](https://github.com/cedricmenec/asf-agent-kits/releases/tag/kits/opencode-openspec/v1.5.0).
 
 ## 1.4.0 (published, immutable)
 

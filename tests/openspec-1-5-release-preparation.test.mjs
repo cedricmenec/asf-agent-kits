@@ -6,10 +6,10 @@ import YAML from 'yaml';
 import { ROOT, strictFile } from '../tools/node/common.mjs';
 import { RELEASE_PATHS } from '../tools/build_release_manifest.mjs';
 
-test('1.5.0 release identity is consistent across immutable-source descriptors', () => {
+test('1.5.1 release identity is consistent across immutable-source descriptors', () => {
   const version = strictFile(path.join(ROOT, 'kits/opencode-openspec/version.json'));
   const kit = strictFile(path.join(ROOT, 'kits/opencode-openspec/kit.json'));
-  assert.equal(version.kitVersion, '1.5.0');
+  assert.equal(version.kitVersion, '1.5.1');
   assert.equal(version.releaseStatus, 'stable');
   assert.deepEqual(kit.release, {
     version: version.kitVersion,
@@ -18,12 +18,12 @@ test('1.5.0 release identity is consistent across immutable-source descriptors',
   });
   for (const file of ['budget.mjs.tmpl', 'publish.sh.tmpl', 'stage.sh.tmpl'])
     assert.ok(RELEASE_PATHS.includes(`kits/opencode-openspec/templates/${file}`));
-  const notes = readFileSync(path.join(ROOT, 'docs/kits/opencode-openspec/RELEASE_NOTES_1.5.0.md'), 'utf8');
-  assert.match(notes, /one additional OpenCode plan-repair invocation/);
-  assert.match(notes, /PR #129/);
+  const notes = readFileSync(path.join(ROOT, 'docs/kits/opencode-openspec/RELEASE_NOTES_1.5.1.md'), 'utf8');
+  assert.match(notes, /Apply publication no longer silently skips after optional jobs are skipped/);
+  assert.match(notes, /PR #132/);
 });
 
-test('generic release evidence workflow is non-paying, read-only, SHA-bound and prepares three assets', () => {
+test('release evidence workflow is non-paying, read-only, SHA-bound and prepares three assets', () => {
   const file = path.join(ROOT, '.github/workflows/prepare-openspec-release-manifest.yml');
   assert.ok(existsSync(file));
   assert.equal(existsSync(path.join(ROOT, '.github/workflows/prepare-1-4-0-manifest.yml')), false);

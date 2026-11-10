@@ -39,8 +39,8 @@ Run from a workspace directory. Replace OWNER/REPO with your repository. If you 
 ```bash
 REPOSITORY="OWNER/REPO"
 git clone https://github.com/cedricmenec/asf-agent-kits.git agent-kits
-git -C agent-kits fetch origin tag kits/opencode-openspec/v1.4.0
-SOURCE_SHA="$(git -C agent-kits rev-parse 'kits/opencode-openspec/v1.4.0^{commit}')"
+git -C agent-kits fetch origin tag kits/opencode-openspec/v1.5.0
+SOURCE_SHA="$(git -C agent-kits rev-parse 'kits/opencode-openspec/v1.5.0^{commit}')"
 git -C agent-kits switch --detach "$SOURCE_SHA"
 git clone "https://github.com/$REPOSITORY.git" target-repo
 SOURCE="$(pwd)/agent-kits"
@@ -49,12 +49,10 @@ CONFIG="$(pwd)/agentkit-config.json"
 cp "$SOURCE/kits/opencode-openspec/mvp-config.example.json" "$CONFIG"
 ```
 
-The commands above use the known published 1.4.0 release as an example. **After
-the 1.5.0 release has actually been published**, replace every occurrence of
-`1.4.0` in the versioned commands with `1.5.0`, and compare its full source SHA
-and release-manifest.json digest with the new GitHub Release. Do not use a
-release-preparation branch as if it were a published version. The CLI reads Git
-objects at the chosen exact commit; it does not authenticate the publisher.
+The commands above use the published 1.5.0 release. Compare its full source SHA
+and release-manifest.json digest with the GitHub Release before continuing. Do
+not use a release-preparation branch as if it were a published version. The CLI
+reads Git objects at the chosen exact commit; it does not authenticate the publisher.
 
 ## Prepare the Node installer
 
@@ -79,19 +77,19 @@ Keep using the same Bash session so the variables remain available.
 
 ```bash
 git -C "$TARGET" status --short
-git -C "$TARGET" switch -c chore/install-agentkit-1.4.0
+git -C "$TARGET" switch -c chore/install-agentkit-1.5.0
 BASE_SHA="$(git -C "$TARGET" rev-parse HEAD)"
 kit_install() {
   node "$SOURCE/bin/asf-agentkit" install \
     --repo "$REPOSITORY" --checkout "$TARGET" \
-    --kit opencode-openspec --version 1.4.0 \
+    --kit opencode-openspec --version 1.5.0 \
     --source "$SOURCE" --source-commit "$SOURCE_SHA" \
     --config "$CONFIG" "$@"
 }
 kit_install --dry-run
 ```
 
-Read the full report. A fresh install creates nine kit files plus one lock file. Stop if the report shows a conflict or an unexpected path. Existing product files must stay intact.
+Read the full report. A fresh install creates 12 managed OpenSpec files plus one lock file. Stop if the report shows a conflict or an unexpected path. Existing product files must stay intact.
 
 ## 4. Apply the reviewed plan locally
 

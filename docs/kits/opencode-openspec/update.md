@@ -8,29 +8,29 @@ Read the release notes, check the new source commit and preserve your current lo
 
 Release 1.2.0 removes Python and requires Node 26.13.0 LTS (supported range >=26.13.0 <27). Align the product package engines, root lockfile engines, .nvmrc, .npmrc (engine-strict=true) and project CI before checking the upgrade. Dependencies and product scripts need no version changes. Auto retains the 1.1.0 behavior: up to three agent phases, with no dollar cap.
 
-Use the reviewed Node installer checkout from Install and run `npm ci --ignore-scripts` there before calling the CLI. For 1.4.0, use the published immutable source commit after verifying its tag and manifest. Once 1.5.0 has been published with its own immutable tag and manifest, substitute `1.5.0` for `1.4.0` in the example below, including the branch, `--version`, and Git tag. The CLI can read historical release Git objects without executing their old installer.
+Use the reviewed Node installer checkout from Install and run `npm ci --ignore-scripts` there before calling the CLI. The examples below use the published immutable 1.5.0 source. Verify its tag and manifest before use. The CLI can read historical release Git objects without executing their old installer.
 
 ## Preview and apply
 
-Use the same workspace layout as the install guide. Replace the values for your repository and paths. The command below targets release 1.4.0 from an older installed version.
+Use the same workspace layout as the install guide. Replace the values for your repository and paths. The command below targets the published release 1.5.0 from an older installed version.
 
 ```bash
 REPOSITORY="OWNER/REPO"
 SOURCE="/absolute/path/to/agent-kits"
 TARGET="/absolute/path/to/target-repo"
 CONFIG="/absolute/path/to/agentkit-config.json"
-git -C "$SOURCE" fetch origin tag kits/opencode-openspec/v1.4.0
-SOURCE_SHA="$(git -C "$SOURCE" rev-parse 'kits/opencode-openspec/v1.4.0^{commit}')"
+git -C "$SOURCE" fetch origin tag kits/opencode-openspec/v1.5.0
+SOURCE_SHA="$(git -C "$SOURCE" rev-parse 'kits/opencode-openspec/v1.5.0^{commit}')"
 # Verify SHA and manifest against the published release before running code.
 git -C "$SOURCE" switch --detach "$SOURCE_SHA"
 npm --prefix "$SOURCE" ci --ignore-scripts
 
-git -C "$TARGET" switch -c chore/upgrade-agentkit-1.4.0
+git -C "$TARGET" switch -c chore/upgrade-agentkit-1.5.0
 BASE_SHA="$(git -C "$TARGET" rev-parse HEAD)"
 kit_upgrade() {
   node "$SOURCE/bin/asf-agentkit" upgrade \
     --repo "$REPOSITORY" --checkout "$TARGET" \
-    --kit opencode-openspec --version 1.4.0 \
+    --kit opencode-openspec --version 1.5.0 \
     --source "$SOURCE" --source-commit "$SOURCE_SHA" \
     --config "$CONFIG" "$@"
 }
